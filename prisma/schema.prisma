@@ -1,0 +1,296 @@
+// Skema database sekenkos.id (MVP). Harga dalam rupiah penuh (Int), bukan sen.
+// Tabel sessions/accounts/verifications dipakai Better Auth (autentikasi).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  BUYER
+  ADMIN
+}
+
+enum ProductCondition {
+  BARU
+  SEPERTI_BARU
+  BEKAS_BAIK
+}
+
+enum ProductStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PACKED
+  SHIPPED
+  RECEIVED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  EWALLET
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  role          Role     @default(BUYER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions  Session[]
+  accounts  Account[]
+  cartItems CartItem[]
+  addresses Address[]
+  orders    Order[]
+  events    OrderEvent[]
+
+  @@map("users")
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  recipient String
+  phone     String
+  street    String
+  city      String
+  zip       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+model Category {
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
+  icon String
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  name        String
+  categoryId  String
+  price       Int
+  condition   ProductCondition
+  size        String
+  description String
+  // Barang preloved umumnya 1 unit. Stok dikurangi atomik saat pesanan dibuat
+  // dan dikembalikan saat pesanan batal/kedaluwarsa.
+  stock       Int
+  images      String[]
+  // true = foto produk asli; false = ilustrasi (dipakai untuk gaya tampilan).
+  isPhoto     Boolean          @default(false)
+  popularity  Int              @default(0)
+  status      ProductStatus    @default(ACTIVE)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  category   Category    @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+
+  @@index([categoryId, status])
+  @@index([status, createdAt])
+  @@map("products")
+}
+
+model Promo {
+  id                String    @id @default(cuid())
+  code              String    @unique
+  percent           Int
+  validUntil        DateTime?
+  quota             Int?
+  usedCount         Int       @default(0)
+  firstPurchaseOnly Boolean   @default(false)
+  active            Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+
+  orders Order[]
+
+  @@map("promos")
+}
+
+model Order {
+  id             String        @id @default(cuid())
+  // Kode yang tampil ke pembeli dan dipakai di pesan WhatsApp, mis. PLY-7K3M9Q.
+  code           String        @unique
+  userId         String
+  status         OrderStatus   @default(PENDING_PAYMENT)
+  subtotal       Int
+  discount       Int           @default(0)
+  shippingCost   Int
+  total          Int
+  courier        String
+  trackingNumber String?
+  paymentMethod  PaymentMethod
+  promoId        String?
+  // Salinan alamat saat checkout agar riwayat tidak berubah bila alamat diedit.
+  shipName       String
+  shipPhone      String
+  shipStreet     String
+  shipCity       String
+  shipZip        String
+  expiresAt      DateTime
+  paidAt         DateTime?
+  shippedAt      DateTime?
+  receivedAt     DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  user   User         @relation(fields: [userId], references: [id])
+  promo  Promo?       @relation(fields: [promoId], references: [id])
+  items  OrderItem[]
+  events OrderEvent[]
+
+  @@index([userId, createdAt])
+  @@index([status, expiresAt])
+  @@index([trackingNumber])
+  @@map("orders")
+}
+
+model OrderItem {
+  id            String @id @default(cuid())
+  orderId       String
+  productId     String
+  // Nama dan harga disalin saat checkout.
+  nameSnapshot  String
+  priceSnapshot Int
+  qty           Int
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+// Jejak perubahan status: siapa (admin/sistem) mengubah apa, dan kapan.
+model OrderEvent {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  actorId   String?
+  note      String?
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([orderId, createdAt])
+  @@map("order_events")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  body      String
+  handled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("messages")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// Kredensial login. Password disimpan sebagai hash oleh Better Auth, bukan teks asli.
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+// Keranjang milik akun yang sedang login. Pengunjung tanpa akun memakai cookie (lihat src/lib/cart-server.ts).
+// Saat login, isi cookie digabung ke sini lalu cookie dikosongkan.
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  qty       Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("cart_items")
+}
+
+// Foto produk yang diunggah admin saat Supabase Storage belum dikonfigurasi. Disajikan lewat /img/[id].
+model ProductImage {
+  id          String   @id @default(cuid())
+  data        Bytes
+  contentType String
+  size        Int
+  createdAt   DateTime @default(now())
+
+  @@map("product_images")
+}

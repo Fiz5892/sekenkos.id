@@ -1,0 +1,532 @@
+@import "tailwindcss";
+
+/* Palet: Desert Rock, Soft Sandstone, Creamed Oat, Porcelain Mist, Feather White.
+   "brand" adalah Desert Rock yang digelapkan agar teks putih di atasnya tetap terbaca (kontras >= 4.5). */
+:root {
+  --background: #faf9f6;
+  --foreground: #2e2620;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-header: #f4f1ea;
+  --color-header-contrast: #e6dac8;
+  --color-hero: #e6dac8;
+  --color-brand: #7f6853;
+  --color-brand-soft: #e6dac8;
+  --color-rock: #a48d78;
+  --color-sandstone: #cbb9a4;
+  --color-muted: #6f6558;
+  --color-line: #e3d9ca;
+  --color-success: #00b090;
+  --color-danger: #d63163;
+  --radius-card: 14px;
+  --font-sans: var(--font-lato), system-ui, sans-serif;
+  --font-head: var(--font-noto-serif), Georgia, serif;
+  --font-serif: var(--font-noto-serif), Georgia, serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-head);
+  line-height: 1.2;
+}
+
+/* Panel admin memakai huruf sans untuk judul agar padat dan mudah dipindai. */
+.font-ui h1,
+.font-ui h2,
+.font-ui h3 {
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--color-header-contrast);
+}
+
+/* ---------- Gerak ----------
+   Aturan: hanya transform dan opacity yang dianimasikan (dikerjakan GPU, tanpa layout/paint ulang), tidak ada
+   animasi pada filter/box-shadow, dan konten tetap tampil penuh bila gerak tidak didukung atau dimatikan. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop {
+  60% {
+    transform: scale(1.25);
+  }
+}
+
+@keyframes menu {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+
+/* Hero: teks masuk bertahap, foto cukup memudar (tanpa skala) agar ringan. */
+.intro > * {
+  animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.intro > :nth-child(2) {
+  animation-delay: 0.06s;
+}
+.intro > :nth-child(3) {
+  animation-delay: 0.12s;
+}
+.intro > :nth-child(4) {
+  animation-delay: 0.18s;
+}
+.intro-media {
+  animation: fade 0.6s ease-out 0.1s both;
+}
+
+/* Komposisi produk di hero: tiap objek naik bergantian, dua objek kecil melayang sangat pelan. */
+.hero-obj {
+  animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) calc(0.15s + var(--d, 0s)) both;
+}
+
+.hero-drift {
+  animation: drift 7s ease-in-out var(--d, 0s) infinite alternate;
+}
+
+@keyframes drift {
+  to {
+    transform: translateY(-6px);
+  }
+}
+
+.pop {
+  animation: pop 0.35s ease-out;
+}
+.menu-in {
+  transform-origin: top right;
+  animation: menu 0.16s ease-out;
+}
+
+/* Muncul saat discroll ke layar; berjalan di compositor. Browser tanpa dukungan menampilkannya biasa. */
+@supports (animation-timeline: view()) {
+  .reveal {
+    animation: rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 30%;
+  }
+}
+
+/* Bayangan kartu: lapisan yang sudah dirender, hanya opacity-nya yang berubah saat hover. */
+.lift::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 12px 28px -12px rgb(46 38 32 / 0.25);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+.lift:hover::before {
+  opacity: 1;
+}
+
+/* Tombol terasa "ditekan". */
+button:not(:disabled),
+a.rounded-full {
+  transition:
+    transform 0.15s ease,
+    background-color 0.2s ease;
+}
+button:not(:disabled):active,
+a.rounded-full:active {
+  transform: scale(0.97);
+}
+
+/* ---------- Cara belanja (OrderJourney) ----------
+   Siklus 10 detik; langkah ke-i aktif pada detik i*2,5 selama 2,5 detik. Animasi adegan memakai jeda
+   var(--i) * 2.5s sehingga semua kerangka waktunya dihitung dari awal langkahnya sendiri (0%–25%). Saat diam
+   (belum terlihat), setiap adegan tampil dalam pose akhirnya. */
+.jr {
+  animation-duration: 10s;
+  animation-iteration-count: infinite;
+  animation-delay: calc(var(--i) * 2.5s);
+  animation-play-state: paused;
+}
+.journey[data-playing] .jr {
+  animation-play-state: running;
+}
+
+/* Penanda langkah aktif: cincin di sekeliling adegan dan garis di bawah judul. */
+@keyframes jr-lit {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  3%,
+  23% {
+    opacity: 1;
+    transform: none;
+  }
+  25%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes jr-bar {
+  0% {
+    transform: scaleX(0);
+  }
+  6%,
+  23% {
+    transform: scaleX(1);
+  }
+  25%,
+  100% {
+    transform: scaleX(0);
+  }
+}
+.jr-lit {
+  opacity: 0;
+  animation-name: jr-lit;
+}
+.jr-bar {
+  transform: scaleX(0);
+  animation-name: jr-bar;
+  animation-timing-function: ease-out;
+}
+
+/* Garis antarlangkah terisi saat langkah selesai; tidak memakai jeda per langkah. */
+[class*="jr-fill-"] {
+  animation-delay: 0s;
+}
+@keyframes jr-fill-x-0 {
+  0%,
+  18% {
+    transform: scaleX(0);
+  }
+  25%,
+  96% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
+  }
+}
+.jr-fill-x-0 {
+  transform: scaleX(0);
+  animation: jr-fill-x-0 10s cubic-bezier(0.6, 0, 0.3, 1) infinite;
+  animation-play-state: paused;
+}
+@keyframes jr-fill-y-0 {
+  0%,
+  18% {
+    transform: scaleY(0);
+  }
+  25%,
+  96% {
+    transform: scaleY(1);
+  }
+  100% {
+    transform: scaleY(0);
+  }
+}
+.jr-fill-y-0 {
+  transform: scaleY(0);
+  animation: jr-fill-y-0 10s cubic-bezier(0.6, 0, 0.3, 1) infinite;
+  animation-play-state: paused;
+}
+@keyframes jr-fill-x-1 {
+  0%,
+  43% {
+    transform: scaleX(0);
+  }
+  50%,
+  96% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
+  }
+}
+.jr-fill-x-1 {
+  transform: scaleX(0);
+  animation: jr-fill-x-1 10s cubic-bezier(0.6, 0, 0.3, 1) infinite;
+  animation-play-state: paused;
+}
+@keyframes jr-fill-y-1 {
+  0%,
+  43% {
+    transform: scaleY(0);
+  }
+  50%,
+  96% {
+    transform: scaleY(1);
+  }
+  100% {
+    transform: scaleY(0);
+  }
+}
+.jr-fill-y-1 {
+  transform: scaleY(0);
+  animation: jr-fill-y-1 10s cubic-bezier(0.6, 0, 0.3, 1) infinite;
+  animation-play-state: paused;
+}
+@keyframes jr-fill-x-2 {
+  0%,
+  68% {
+    transform: scaleX(0);
+  }
+  75%,
+  96% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
+  }
+}
+.jr-fill-x-2 {
+  transform: scaleX(0);
+  animation: jr-fill-x-2 10s cubic-bezier(0.6, 0, 0.3, 1) infinite;
+  animation-play-state: paused;
+}
+@keyframes jr-fill-y-2 {
+  0%,
+  68% {
+    transform: scaleY(0);
+  }
+  75%,
+  96% {
+    transform: scaleY(1);
+  }
+  100% {
+    transform: scaleY(0);
+  }
+}
+.jr-fill-y-2 {
+  transform: scaleY(0);
+  animation: jr-fill-y-2 10s cubic-bezier(0.6, 0, 0.3, 1) infinite;
+  animation-play-state: paused;
+}
+
+/* Kemunculan dengan pantulan kecil: tengah langkah dan akhir langkah. */
+@keyframes sc-pop-mid {
+  0%,
+  10% {
+    transform: scale(0);
+  }
+  14% {
+    transform: scale(1.15);
+  }
+  17%,
+  100% {
+    transform: none;
+  }
+}
+@keyframes sc-pop-late {
+  0%,
+  15% {
+    transform: scale(0);
+  }
+  19% {
+    transform: scale(1.18);
+  }
+  22%,
+  100% {
+    transform: none;
+  }
+}
+.sc-pop-mid {
+  animation-name: sc-pop-mid;
+}
+.sc-pop-late {
+  animation-name: sc-pop-late;
+}
+
+/* 1. Kaca pembesar menyisir baju. */
+@keyframes sc0-mag {
+  0% {
+    transform: none;
+  }
+  6% {
+    transform: translate(-36px, 12px) rotate(-8deg);
+  }
+  12% {
+    transform: translate(-14px, 36px);
+  }
+  17% {
+    transform: translate(-2px, 10px) rotate(6deg);
+  }
+  21%,
+  100% {
+    transform: none;
+  }
+}
+.sc0-mag {
+  animation-name: sc0-mag;
+  animation-timing-function: ease-in-out;
+}
+
+/* 2. Struk keluar dari mesin, jarum jam berputar. */
+@keyframes sc1-print {
+  0%,
+  2% {
+    transform: translateY(-100%);
+  }
+  14%,
+  100% {
+    transform: none;
+  }
+}
+@keyframes sc1-tick {
+  0%,
+  15% {
+    transform: rotate(0);
+  }
+  24%,
+  100% {
+    transform: rotate(720deg);
+  }
+}
+.sc1-print {
+  animation-name: sc1-print;
+  animation-timing-function: steps(8, end);
+}
+.sc1-tick {
+  animation-name: sc1-tick;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 3. Koin jatuh ke HP. */
+@keyframes sc2-coin {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  3% {
+    opacity: 1;
+    transform: none;
+  }
+  9% {
+    opacity: 1;
+    transform: translateY(34px) scale(0.9);
+  }
+  11%,
+  100% {
+    opacity: 0;
+    transform: translateY(42px) scale(0.5);
+  }
+}
+.sc2-coin {
+  opacity: 0;
+  animation-name: sc2-coin;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+}
+
+/* 4. Truk melaju masuk, jalanan bergerak, garis kecepatan. Pola jalan berulang tiap 17px (68 = 4 × 17). */
+@keyframes sc3-drive {
+  0% {
+    transform: translateX(-130px);
+  }
+  11% {
+    transform: translateX(5px);
+  }
+  14% {
+    transform: translateX(-2px);
+  }
+  16%,
+  100% {
+    transform: none;
+  }
+}
+@keyframes sc3-road {
+  0% {
+    transform: none;
+  }
+  14%,
+  100% {
+    transform: translateX(-68px);
+  }
+}
+@keyframes sc3-lines {
+  0% {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  4%,
+  10% {
+    opacity: 1;
+    transform: none;
+  }
+  14%,
+  100% {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+.sc3-drive {
+  animation-name: sc3-drive;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.sc3-road {
+  animation-name: sc3-road;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.sc3-lines {
+  opacity: 0;
+  animation-name: sc3-lines;
+}
+
+/* Scrollbar halus untuk panel samping/filter */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--color-line);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-sandstone);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
