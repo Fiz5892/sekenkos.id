@@ -9,8 +9,16 @@ import { SITE } from "@/lib/site";
 // Batas percobaan per menit per IP. Bisa dinaikkan hanya untuk tes otomatis (lihat playwright.config.ts).
 const strictMax = Number(process.env.AUTH_RATE_LIMIT_MAX) || 5;
 
+// Asal (origin) yang boleh memanggil API auth selain baseURL. Di Vercel, domain produksi dan URL deploy/preview
+// diisi otomatis oleh Vercel, jadi login tidak ditolak "Invalid origin" saat dibuka lewat domain tersebut.
+const trustedOrigins = [
+  process.env.NEXT_PUBLIC_SITE_URL,
+  ...[process.env.VERCEL_PROJECT_PRODUCTION_URL, process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL].map((h) => (h ? `https://${h}` : undefined)),
+].filter((o): o is string => Boolean(o));
+
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL ?? SITE.url,
+  trustedOrigins,
   secret: process.env.BETTER_AUTH_SECRET,
   database: prismaAdapter(db, { provider: "postgresql" }),
   emailAndPassword: {

@@ -8,7 +8,7 @@ const ITEMS = [
   { href: "/admin", label: "Dashboard", exact: true, icon: "M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" },
   { href: "/admin/pesanan", label: "Pesanan", icon: "M6 2l-3 4v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6zm0 4h12M9 10a3 3 0 006 0" },
   { href: "/admin/produk", label: "Produk", icon: "M20 7l-8-4-8 4v10l8 4 8-4V7zM4 7l8 4m0 10V11m8-4l-8 4" },
-  { href: "/admin/promo", label: "Promo", icon: "M20 12l-8 8-9-9V3h8l9 9zM7.5 7.5h.01" },
+  { href: "/admin/kategori", label: "Kategori", icon: "M20 12l-8 8-9-9V3h8l9 9zM7.5 7.5h.01" },
   { href: "/admin/pesan", label: "Pesan masuk", icon: "M4 4h16v12H8l-4 4V4z" },
 ];
 

@@ -66,10 +66,15 @@ async function Daftar() {
               <td className={`p-3 ${p.stock === 0 ? "font-bold text-danger" : ""}`}>{p.stock}</td>
               <td className="p-3">{p.status === "ACTIVE" ? "Aktif" : "Diarsipkan"}</td>
               <td className="p-3">
-                <form action={toggleArchive}>
-                  <input type="hidden" name="id" value={p.id} />
-                  <button className="text-brand hover:underline">{p.status === "ACTIVE" ? "Arsipkan" : "Aktifkan"}</button>
-                </form>
+                <div className="flex items-center gap-4">
+                  <Link href={`/admin/produk/${p.id}`} className="rounded-full border border-foreground px-3 py-1 text-xs font-bold hover:bg-header">
+                    Ubah
+                  </Link>
+                  <form action={toggleArchive}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <button className="text-brand hover:underline">{p.status === "ACTIVE" ? "Arsipkan" : "Aktifkan"}</button>
+                  </form>
+                </div>
               </td>
             </tr>
           ))}
