@@ -144,8 +144,8 @@ export function ImageManager({ initial, max }: { initial: string[]; max: number 
 
   return (
     <fieldset className="grid gap-3">
-      <legend className="text-sm font-bold">
-        Foto produk <span className="font-normal text-muted">({total}/{max}) — foto pertama jadi foto utama</span>
+      <legend className="mb-2 text-sm font-bold">
+        Foto <span className="font-normal text-muted">({total}/{max})</span>
       </legend>
 
       {kept.map((src) => (
@@ -198,7 +198,7 @@ export function ImageManager({ initial, max }: { initial: string[]; max: number 
         </ul>
       )}
 
-      <div>
+      <div className={`rounded-lg border-2 border-dashed border-line bg-header/50 p-4 text-center ${total >= max ? "opacity-60" : ""}`}>
         <input
           ref={input}
           name="files"
@@ -208,16 +208,16 @@ export function ImageManager({ initial, max }: { initial: string[]; max: number 
           onChange={onPick}
           disabled={total >= max || compressing}
           aria-label="Tambah foto"
-          className="text-sm"
+          className="w-full text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-foreground file:px-5 file:py-2 file:text-sm file:font-bold file:text-white hover:file:bg-black"
         />
         {compressing && (
-          <p className="mt-1 flex items-center gap-1.5 text-xs font-bold text-brand" role="status">
+          <p className="mt-2 flex items-center justify-center gap-1.5 text-xs font-bold text-brand" role="status">
             <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-            Mengompresi foto otomatis ke format WebP hemat storage…
+            Mengompresi foto otomatis ke format WebP…
           </p>
         )}
-        <p className="mt-1 text-xs text-muted">
-          Pilih foto (JPG, PNG, atau WebP). Foto besar (hingga 10–20 MB) otomatis dikompresi menjadi WebP ringan (~100–300 KB) agar hemat ruang bucket Supabase dan cepat dimuat pembeli.
+        <p className="mt-2 text-xs leading-relaxed text-muted">
+          JPG, PNG, atau WebP. Foto besar otomatis dikompresi menjadi WebP ringan (~100–300 KB) agar hemat penyimpanan dan cepat dimuat pembeli.
         </p>
       </div>
     </fieldset>

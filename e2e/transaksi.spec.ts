@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { cleanupTestData, createTestProduct, createTestPromo, eventCount, expireNow, makeAdmin, promoUsed, statusOf, stockOf } from "./db";
+import { cleanupTestData, createTestProduct, createTestPromo, eventCount, expireNow, makeAdmin, productIdOf, promoUsed, statusOf, stockOf } from "./db";
 import { addToCart, cartLink, clickAction, fillCheckout, formAlert, newUser, stamp, testEmail } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
@@ -309,24 +309,48 @@ test("admin: ubah produk dari daftar, kelola kategori, dan menu Promo tidak ada"
   await p.getByLabel("Nama kategori").fill(name);
   await p.getByRole("button", { name: "Tambah kategori" }).click();
   await expect(p.getByText("Kategori disimpan.")).toBeVisible();
-  const row = p.getByRole("row", { name: new RegExp(name) });
+  const row = p.locator("li", { hasText: name });
   await expect(row).toBeVisible();
 
   await row.getByRole("link", { name: "Ubah" }).click();
   await expect(p.getByRole("heading", { name: "Ubah kategori" })).toBeVisible();
   await p.getByLabel("Nama kategori").fill(`${name} Baru`);
   await p.getByRole("button", { name: "Simpan perubahan" }).click();
-  await expect(p.getByRole("row", { name: new RegExp(`${name} Baru`) })).toBeVisible();
+  await expect(p.locator("li", { hasText: `${name} Baru` })).toBeVisible();
 
   // Nama ganda (slug sama) ditolak.
+  await p.goto("/admin/kategori");
   await p.getByLabel("Nama kategori").fill("Pakaian");
   await p.getByRole("button", { name: "Tambah kategori" }).click();
   await expect(p.getByRole("alert").filter({ hasText: "sudah dipakai" })).toBeVisible();
 
-  await p.getByRole("row", { name: new RegExp(`${name} Baru`) }).getByRole("button", { name: "Hapus" }).click();
-  await expect(p.getByRole("row", { name: new RegExp(name) })).toHaveCount(0);
-  // Kategori yang masih berisi produk tidak punya tombol Hapus.
-  await expect(p.getByRole("row", { name: /Pakaian/ }).getByRole("button", { name: "Hapus" })).toHaveCount(0);
+  // Hapus kategori kosong: konfirmasi dulu.
+  const rowBaru = p.locator("li", { hasText: `${name} Baru` });
+  await rowBaru.getByRole("link", { name: "Hapus" }).click();
+  await expect(p.getByRole("heading", { name: "Hapus kategori" })).toBeVisible();
+  await p.getByRole("button", { name: "Ya, hapus" }).click();
+  await expect(p.getByText("Kategori dihapus.")).toBeVisible();
+  await expect(p.locator("li", { hasText: name })).toHaveCount(0);
+
+  // Kategori berisi produk: wajib memilih tujuan pemindahan; produk ikut pindah, kategori terhapus.
+  const moved = `Kategori Pindah ${String(stamp).slice(-5)}`;
+  await p.getByLabel("Nama kategori").fill(moved);
+  await p.getByRole("button", { name: "Tambah kategori" }).click();
+  await expect(p.getByText("Kategori disimpan.")).toBeVisible();
+  await p.goto(`/admin/produk/${await productIdOf(multi)}`);
+  await p.getByLabel("Kategori").selectOption({ label: moved });
+  await p.getByRole("button", { name: "Simpan perubahan" }).click();
+  await expect(p.getByText("Produk disimpan.")).toBeVisible();
+
+  await p.goto("/admin/kategori");
+  await p.locator("li", { hasText: moved }).getByRole("link", { name: "Hapus" }).click();
+  await p.getByRole("button", { name: "Ya, hapus" }).click(); // tanpa tujuan: ditolak oleh validasi form
+  await expect(p.getByRole("heading", { name: "Hapus kategori" })).toBeVisible();
+  await p.getByLabel(/Pindahkan 1 produk ke/).selectOption({ label: "Pakaian" });
+  await p.getByRole("button", { name: "Ya, hapus" }).click();
+  await expect(p.getByText("Kategori dihapus.")).toBeVisible();
+  await expect(p.locator("li", { hasText: moved })).toHaveCount(0);
+  await expect(p.locator("li", { hasText: "Pakaian" })).toContainText(/[2-9] produk/);
 });
 
 test("halaman statis tersedia", async ({ page }) => {

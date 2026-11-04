@@ -110,7 +110,7 @@ test("admin punya kerangka sendiri: sidebar, tanpa navbar dan footer toko", asyn
   await expect(p.getByRole("search")).toHaveCount(0); // tidak ada pencarian toko
   await expect(p.getByRole("contentinfo")).toHaveCount(0); // tidak ada footer toko
   const side = p.getByRole("navigation", { name: "Menu admin" });
-  for (const label of ["Dashboard", "Pesanan", "Produk", "Promo", "Pesan masuk"]) {
+  for (const label of ["Dashboard", "Pesanan", "Produk", "Kategori", "Pesan masuk"]) {
     await expect(side.getByRole("link", { name: label })).toBeVisible();
   }
   await expect(side.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");

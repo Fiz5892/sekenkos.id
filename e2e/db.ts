@@ -60,6 +60,7 @@ export function createTestPromo(code: string, percent: number, opts: { quota?: n
   );
 }
 
+export const productIdOf = (slug: string) => withClient(async (c) => (await c.query("select id from products where slug = $1", [slug])).rows[0]?.id as string);
 export const stockOf = (slug: string) => withClient(async (c) => (await c.query("select stock from products where slug = $1", [slug])).rows[0]?.stock as number | undefined);
 export const statusOf = (code: string) => withClient(async (c) => (await c.query("select status from orders where code = $1", [code])).rows[0]?.status as string | undefined);
 export const promoUsed = (code: string) => withClient(async (c) => (await c.query('select "usedCount" from promos where code = $1', [code])).rows[0]?.usedCount as number | undefined);

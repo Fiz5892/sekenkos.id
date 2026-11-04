@@ -17,8 +17,8 @@ const schema = z.object({
   slug: z.string().trim().max(40).optional(),
 });
 
-function back(error: string, id?: string): never {
-  redirect(`/admin/kategori?galat=${encodeURIComponent(error)}${id ? `&ubah=${id}` : ""}`);
+function back(error: string, id?: string, hapus?: string): never {
+  redirect(`/admin/kategori?galat=${encodeURIComponent(error)}${id ? `&ubah=${id}` : ""}${hapus ? `&hapus=${hapus}` : ""}`);
 }
 
 async function parse(formData: FormData, id?: string) {
@@ -61,14 +61,25 @@ export async function updateCategory(formData: FormData) {
   redirect("/admin/kategori?tersimpan=1");
 }
 
-/** Kategori yang masih punya produk tidak bisa dihapus: pindahkan atau arsipkan produknya dulu. */
+/**
+ * Menghapus kategori. Bila masih punya produk, produknya harus dipindahkan ke kategori lain (moveTo) dalam satu
+ * transaksi yang sama, supaya tidak ada produk tanpa kategori.
+ */
 export async function deleteCategory(formData: FormData) {
   await requireAdmin();
   const id = text(formData.get("id"));
+  const moveTo = text(formData.get("moveTo"));
   const cat = await db.category.findUnique({ where: { id }, select: { icon: true, name: true, _count: { select: { products: true } } } });
   if (!cat) redirect("/admin/kategori");
-  if (cat._count.products > 0) back(`Kategori "${cat.name}" masih punya ${cat._count.products} produk. Pindahkan produknya ke kategori lain dulu.`);
-  await db.category.delete({ where: { id } });
+
+  const count = cat._count.products;
+  if (count > 0) {
+    if (!moveTo || moveTo === id) back(`Pilih kategori tujuan untuk ${count} produk di "${cat.name}".`, undefined, id);
+    if (!(await db.category.findUnique({ where: { id: moveTo }, select: { id: true } }))) back("Kategori tujuan tidak ditemukan.", undefined, id);
+    await db.$transaction([db.product.updateMany({ where: { categoryId: id }, data: { categoryId: moveTo } }), db.category.delete({ where: { id } })]);
+  } else {
+    await db.category.delete({ where: { id } });
+  }
   await deleteStoredImages([cat.icon]);
-  redirect("/admin/kategori?tersimpan=1");
+  redirect("/admin/kategori?terhapus=1");
 }
