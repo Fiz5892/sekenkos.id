@@ -1,5 +1,6 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -7,15 +8,15 @@ import type { CartLine } from "@/lib/cart";
 import { writeCart, readCart } from "@/lib/cart-server";
 import { db } from "@/lib/db";
 import { formatRupiah } from "@/lib/format";
-import { GatewayError, createInvoice, gatewayEnabled } from "@/lib/gateway";
+// import { GatewayError, createInvoice, gatewayEnabled } from "@/lib/gateway";
 import { runExpiry } from "@/lib/maintenance";
 import { emailOrderCreated } from "@/lib/order-emails";
-import { OrderError, cancelOrder, createOrder, validatePromo } from "@/lib/orders";
+import { OrderError, /* cancelOrder, */ createOrder, validatePromo } from "@/lib/orders";
 import { requireUser } from "@/lib/session";
 import { type ShippingOption } from "@/lib/shipping";
 import { packageWeight } from "@/lib/shipping-calc";
 import { ShippingError, quoteShipping, resolveShipping, shippingSettings } from "@/lib/shipping-quote";
-import { SITE } from "@/lib/site";
+// import { SITE } from "@/lib/site";
 import { resolveVillage } from "@/lib/wilayah";
 
 export type CheckoutState = { error?: string; refreshShipping?: boolean };
@@ -36,7 +37,8 @@ const schema = z.object({
   courier: z.string().trim().min(1, "Pilih jasa pengiriman.").max(60),
   // Ongkir yang tampil di layar saat pembeli memilih; dibandingkan dengan hitungan ulang di server.
   shippingCost: z.coerce.number().int().min(0),
-  payment: z.enum(["GATEWAY", "BANK_TRANSFER", "EWALLET"], "Pilih metode pembayaran."),
+  // "GATEWAY" (Midtrans) dinonaktifkan; tambahkan kembali bersama blok yang dikomentari di bawah bila dibutuhkan.
+  payment: z.enum(["BANK_TRANSFER", "EWALLET", "QRIS"], "Pilih metode pembayaran."),
   promo: z.string().trim().max(40).optional(),
 });
 
@@ -110,7 +112,7 @@ export async function placeOrder(_prev: CheckoutState, formData: FormData): Prom
 
   const lines = await readCart();
   if (lines.length === 0) return { error: "Keranjangmu kosong." };
-  if (d.payment === "GATEWAY" && !gatewayEnabled()) return { error: "Pembayaran online belum tersedia. Pilih transfer manual." };
+  // if (d.payment === "GATEWAY" && !gatewayEnabled()) return { error: "Pembayaran online belum tersedia. Pilih transfer manual." };
 
   // Ongkir selalu dihitung ulang di server dari berat barang di database dan tarif kurir terbaru.
   let shipping: ShippingOption;
@@ -165,32 +167,36 @@ export async function placeOrder(_prev: CheckoutState, formData: FormData): Prom
   if (existing) await db.address.update({ where: { id: existing.id }, data: addr });
   else await db.address.create({ data: { userId: user.id, ...addr } });
 
-  let payUrl = `/pesanan/${order.code}`;
-  if (d.payment === "GATEWAY") {
-    try {
-      const invoice = await createInvoice({
-        externalId: order.code,
-        amount: order.total,
-        description: `Pesanan ${order.code} - ${SITE.name}`,
-        email: order.user.email,
-        name: d.recipient,
-        phone: d.phone,
-        // Invoice berakhir sedikit sebelum pesanan kedaluwarsa agar tidak ada pembayaran setelah stok dilepas.
-        durationSeconds: Math.max(1800, Math.floor((order.expiresAt.getTime() - Date.now()) / 1000) - 120),
-        successUrl: `${SITE.url}/pesanan/${order.code}?bayar=ok`,
-        failureUrl: `${SITE.url}/pesanan/${order.code}`,
-      });
-      await db.order.update({ where: { id: order.id }, data: { gatewayInvoiceId: invoice.id, gatewayUrl: invoice.url } });
-      payUrl = invoice.url;
-    } catch (e) {
-      // Tanpa invoice pesanan tidak bisa dibayar: batalkan dan kembalikan stok agar pembeli bisa mencoba lagi.
-      await cancelOrder(order.id, null, "Gagal membuat invoice pembayaran");
-      if (e instanceof GatewayError) return { error: e.message };
-      throw e;
-    }
-  }
+  const payUrl = `/pesanan/${order.code}`;
+  // Payment gateway (Midtrans) dinonaktifkan. Untuk mengaktifkan lagi: ubah payUrl menjadi `let`, buka komentar blok ini,
+  // tambahkan "GATEWAY" ke enum `payment` dan CHECKOUT_PAYMENTS, serta impor GatewayError, createInvoice, cancelOrder, SITE.
+  // if (d.payment === "GATEWAY") {
+  //   try {
+  //     const invoice = await createInvoice({
+  //       externalId: order.code,
+  //       amount: order.total,
+  //       description: `Pesanan ${order.code} - ${SITE.name}`,
+  //       email: order.user.email,
+  //       name: d.recipient,
+  //       phone: d.phone,
+  //       // Invoice berakhir sedikit sebelum pesanan kedaluwarsa agar tidak ada pembayaran setelah stok dilepas.
+  //       durationSeconds: Math.max(1800, Math.floor((order.expiresAt.getTime() - Date.now()) / 1000) - 120),
+  //       successUrl: `${SITE.url}/pesanan/${order.code}?bayar=ok`,
+  //       failureUrl: `${SITE.url}/pesanan/${order.code}`,
+  //     });
+  //     await db.order.update({ where: { id: order.id }, data: { gatewayInvoiceId: invoice.id, gatewayUrl: invoice.url } });
+  //     payUrl = invoice.url;
+  //   } catch (e) {
+  //     // Tanpa invoice pesanan tidak bisa dibayar: batalkan dan kembalikan stok agar pembeli bisa mencoba lagi.
+  //     await cancelOrder(order.id, null, "Gagal membuat invoice pembayaran");
+  //     if (e instanceof GatewayError) return { error: e.message };
+  //     throw e;
+  //   }
+  // }
 
   await writeCart([]);
   after(() => emailOrderCreated(order, order.expiresAt));
+  // Keranjang akun disimpan di database (bukan cookie), jadi header perlu dirender ulang agar badge keranjang kosong.
+  refresh();
   redirect(payUrl);
 }

@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 const STEPS = [
   ["Pilih barang", "Foto dan kondisi ditulis apa adanya. Kalau ragu, tanya lewat Chat di halaman produk."],
   ["Checkout", "Stok langsung ditahan untukmu selama 24 jam. Barang preloved biasanya cuma satu."],
-  ["Transfer, lalu kabari", "Bayar ke rekening yang tertera, kirim bukti lewat WhatsApp."],
+  ["Bayar, lalu kabari", "Pilih transfer bank, e-wallet, atau QRIS, lalu kirim bukti lewat WhatsApp."],
   ["Kami kirim", "Setelah pembayaran dicek, barang dikemas dan nomor resi muncul di halaman pesananmu."],
 ] as const;
 
@@ -28,7 +28,10 @@ export default function HomePage() {
               <Link href="/produk?urut=terbaru" className="inline-flex rounded-full bg-foreground px-7 py-3 font-bold text-white hover:bg-black">
                 Lihat barang terbaru
               </Link>
-              <a href="#cara-belanja" className="font-bold text-brand underline underline-offset-4">
+              <a
+                href="#cara-belanja"
+                className="inline-flex rounded-full bg-white px-7 py-3 font-bold text-foreground ring-1 ring-foreground hover:bg-header"
+              >
                 Cara belanjanya
               </a>
             </div>
@@ -54,10 +57,6 @@ export default function HomePage() {
           <ProductList order="popular" />
         </Suspense>
       </Section>
-
-      <p className="mx-auto w-[min(1224px,100%-32px)] border-y border-line py-3 text-center text-sm text-muted">
-        Pembelian pertama? Pakai kode <b className="font-mono text-foreground">PRELOVED10</b> di keranjang untuk diskon 10%.
-      </p>
 
       <section id="cara-belanja" className="mx-auto w-[min(1224px,100%-32px)] scroll-mt-24 py-12">
         <h2 className="mb-6 text-2xl font-bold">Cara belanja di sini</h2>
@@ -169,15 +168,7 @@ async function Categories() {
                 className="object-contain drop-shadow-[0_12px_10px_rgb(46_38_32/0.18)]"
               />
             </span>
-            <span className="relative flex items-center justify-between gap-2">
-              <span className="font-serif text-lg font-semibold leading-tight">{c.name}</span>
-              <span
-                aria-hidden="true"
-                className="grid size-8 shrink-0 place-items-center rounded-full bg-white text-foreground transition-colors group-hover:bg-foreground group-hover:text-white"
-              >
-                →
-              </span>
-            </span>
+            <span className="relative font-serif text-lg font-semibold leading-tight">{c.name}</span>
           </Link>
         </li>
       ))}

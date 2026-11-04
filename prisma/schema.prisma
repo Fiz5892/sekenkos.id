@@ -38,7 +38,10 @@ enum OrderStatus {
 enum PaymentMethod {
   BANK_TRANSFER
   EWALLET
+  // QRIS dinamis (nominal terkunci), dikonfirmasi manual lewat WhatsApp seperti transfer.
+  QRIS
   // Bayar online lewat payment gateway (Midtrans): VA bank, QRIS, e-wallet, kartu. Status dibayar otomatis via webhook.
+  // Dinonaktifkan di checkout; nilai enum dipertahankan agar pesanan lama tetap valid.
   GATEWAY
 }
 

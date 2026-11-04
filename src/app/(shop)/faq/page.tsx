@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "FAQ", description: "Pertanyaan umum 
 const FAQ: [string, string][] = [
   ["Apa itu barang preloved?", "Barang bekas yang masih layak pakai. Setiap barang di sekenkos.id sudah kami periksa, bersihkan, dan beri keterangan kondisi: Baru, Seperti Baru, atau Bekas - Baik."],
   ["Bagaimana cara membeli?", "Pilih produk → Tambah ke Keranjang → Checkout → isi detail pengiriman → Buat Pesanan → bayar sesuai petunjuk lalu kirim bukti lewat WhatsApp."],
-  ["Bagaimana cara membayar?", "Setelah pesanan dibuat, kamu mendapat nomor rekening (transfer bank) atau nomor dompet digital/QRIS toko. Bayar sesuai nominal, lalu tekan tombol Konfirmasi lewat WhatsApp dan kirim bukti pembayaran. Admin memverifikasi dan mengubah status pesananmu menjadi Dibayar."],
+  ["Bagaimana cara membayar?", "Setelah pesanan dibuat, kamu mendapat nomor rekening (transfer bank) atau nomor e-wallet toko, atau kode QRIS dengan nominal yang sudah terisi otomatis. Bayar sesuai nominal, lalu tekan tombol Konfirmasi lewat WhatsApp dan kirim bukti pembayaran. Admin memverifikasi dan mengubah status pesananmu menjadi Dibayar."],
   ["Berapa lama batas pembayaran?", "24 jam sejak pesanan dibuat. Setelah itu pesanan dibatalkan otomatis dan stok barang dikembalikan agar bisa dibeli orang lain."],
   ["Berapa lama pengiriman?", "Pesanan dikemas maksimal 1×24 jam setelah pembayaran diverifikasi. Lama pengiriman tergantung kurir: 1–3 hari kerja untuk wilayah Jawa."],
   ["Bagaimana cara melacak pesanan?", "Buka menu Lacak Pesanan lalu masukkan nomor pesanan atau nomor resi. Status juga bisa dilihat di Akun Saya → Riwayat Pembelian."],

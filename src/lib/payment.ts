@@ -1,5 +1,17 @@
 import "server-only";
+import QRCode from "qrcode";
 import type { PaymentMethod } from "@/generated/prisma/enums";
+import { dynamicQris, validQris } from "@/lib/qris";
+
+/**
+ * Gambar QRIS dinamis (data URL) dengan nominal terkunci, dibuat dari QRIS statis toko di env PAYMENT_QRIS
+ * (isi teks hasil scan QR statis). Null bila belum diatur atau payload tidak valid.
+ */
+export async function qrisImage(amount: number): Promise<string | null> {
+  const base = process.env.PAYMENT_QRIS?.trim();
+  if (!base || !validQris(base)) return null;
+  return QRCode.toDataURL(dynamicQris(base, amount), { errorCorrectionLevel: "M", margin: 2, width: 480 });
+}
 
 /**
  * Tujuan pembayaran manual. Diatur lewat env agar tidak perlu mengubah kode:

@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { loadCart } from "@/lib/cart-server";
 import { db } from "@/lib/db";
-import { gatewayEnabled } from "@/lib/gateway";
 import { chainFor, listProvinces } from "@/lib/wilayah";
 import { requireUser } from "@/lib/session";
 import { CheckoutForm } from "./checkout-form";
@@ -41,7 +40,6 @@ async function Checkout() {
   return (
     <CheckoutForm
       subtotal={subtotal}
-      gateway={gatewayEnabled()}
       saved={saved}
       provinces={listProvinces()}
       initialPlace={initialPlace}

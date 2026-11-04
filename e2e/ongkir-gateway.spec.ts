@@ -93,6 +93,23 @@ test("kode desa yang dipalsukan ditolak: nama wilayah tidak pernah dipercaya dar
   expect(await stockOf(item)).toBe(before);
 });
 
+test("metode bayar: transfer, e-wallet, QRIS; QRIS menampilkan kode dinamis sesuai total", async () => {
+  const p = user.page;
+  await p.goto("/checkout"); // keranjang akun masih berisi barang dari tes sebelumnya
+  await expect(p.getByRole("radio", { name: /Transfer Bank/ })).toBeVisible();
+  await expect(p.getByRole("radio", { name: /E-Wallet/ })).toBeVisible();
+  await expect(p.getByRole("radio", { name: /QRIS/ })).toBeVisible();
+  await expect(p.getByRole("radio", { name: /Bayar online/ })).toHaveCount(0);
+
+  await fillCheckout(p);
+  await p.getByRole("radio", { name: /QRIS/ }).check();
+  await p.getByRole("button", { name: "Buat Pesanan" }).click();
+  await expect(p).toHaveURL(/\/pesanan\/PLY-[A-Z0-9]{6}$/);
+  const code = orderCode(p);
+  await expect(p.getByRole("img", { name: new RegExp(`QRIS untuk pesanan ${code}`) })).toBeVisible();
+  expect(await statusOf(code)).toBe("PENDING_PAYMENT");
+});
+
 test("pesanan manual: bukan bayar online, jadi webhook tidak bisa melunasinya", async ({ request }) => {
   const p = user.page;
   const code = await placeOrder(p);

@@ -3,7 +3,7 @@ export const SITE = {
   tagline: "Secondhand, First Choice",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   // Data kontak contoh dari website lama; ganti lewat .env / panel admin saat go-live.
-  whatsapp: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "6281200000000",
+  whatsapp: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "6281357022860",
   instagram: "@sekenkos.id",
   email: "hello@sekenkos.id",
   address: "Malang, Jawa Timur",

@@ -1,16 +1,34 @@
 import "server-only";
+import nodemailer from "nodemailer";
 
 type Email = { to: string; subject: string; text: string };
 
 /**
- * Mengirim email lewat Resend (REST). Tanpa RESEND_API_KEY:
+ * Mengirim email lewat SMTP (mis. Gmail + App Password) atau Resend (REST), sesuai env yang diisi:
+ * - SMTP_USER + SMTP_PASS: dikirim lewat SMTP. Bawaan host smtp.gmail.com port 465.
+ * - RESEND_API_KEY: dikirim lewat Resend.
+ * Tanpa keduanya:
  * - di development, isi email dicetak ke konsol server agar alur (mis. reset password) bisa dicoba;
  * - di produksi, pengiriman gagal dengan error supaya tidak terlihat "berhasil" padahal tidak terkirim.
  */
 export async function sendEmail({ to, subject, text }: Email) {
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  if (smtpUser && smtpPass) {
+    const port = Number(process.env.SMTP_PORT) || 465;
+    const transport = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port,
+      secure: port === 465,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+    await transport.sendMail({ from: process.env.EMAIL_FROM || `sekenkos.id <${smtpUser}>`, to, subject, text });
+    return;
+  }
+
   const key = process.env.RESEND_API_KEY;
   if (!key) {
-    if (process.env.NODE_ENV === "production") throw new Error("RESEND_API_KEY belum diatur; email tidak terkirim.");
+    if (process.env.NODE_ENV === "production") throw new Error("Layanan email belum diatur (SMTP_USER/SMTP_PASS atau RESEND_API_KEY); email tidak terkirim.");
     console.log(`\n[email dev] Kepada: ${to}\n[email dev] Subjek: ${subject}\n${text}\n`);
     return;
   }

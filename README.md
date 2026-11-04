@@ -1,7 +1,7 @@
 # sekenkos.id
 
 Toko barang preloved (*Secondhand, First Choice*). Next.js + TypeScript + Tailwind, PostgreSQL via Prisma, Better Auth.
-Pembayaran: bayar online lewat Midtrans (VA bank, QRIS, e-wallet, kartu; lunas otomatis via webhook) dan/atau transfer manual dengan konfirmasi WhatsApp. Ongkir dihitung otomatis dari berat barang dan kode pos tujuan (Biteship).
+Pembayaran: transfer bank, e-wallet, atau QRIS dinamis (nominal terisi otomatis), semuanya dikonfirmasi lewat WhatsApp. Integrasi Midtrans masih ada di kode tetapi dinonaktifkan. Ongkir dihitung otomatis dari berat barang dan kode pos tujuan (Biteship).
 
 ## Fitur
 
@@ -52,14 +52,13 @@ Menjadikan akun sebagai admin (daftar dulu lewat /daftar): `npm run admin:make -
 ## Variabel lingkungan
 
 Lihat `.env.example`. Yang wajib di produksi: `DATABASE_URL`, `DATABASE_CA`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`,
-`NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WHATSAPP_NUMBER`, `PAYMENT_BANK` / `PAYMENT_EWALLET`, `RESEND_API_KEY`, `EMAIL_FROM`, `CRON_SECRET`.
+`NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WHATSAPP_NUMBER`, `PAYMENT_BANK` / `PAYMENT_EWALLET` / `PAYMENT_QRIS`, layanan email (`SMTP_USER` + `SMTP_PASS` untuk Gmail App Password, atau `RESEND_API_KEY`), `CRON_SECRET`.
 Opsional: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_BUCKET` (default `products`, harus bucket publik) untuk unggah foto produk. Setelah mengisinya, jalankan `npm run storage:setup`: skrip membuat bucket publik (hanya JPG/PNG/WebP, maks 2 MB) dan memindahkan foto yang sudah ada ke sana.
 
-### Pembayaran online (Midtrans) dan ongkir dinamis (Biteship)
+### QRIS dinamis, Midtrans (nonaktif), dan ongkir dinamis (Biteship)
 
-Keduanya opsional dan aktif begitu kuncinya diisi di `.env`; tanpa kunci, toko tetap jalan dengan transfer manual dan tarif ongkir perkiraan.
-
-- **Midtrans:** isi `MIDTRANS_SERVER_KEY` (kunci berawalan `SB-` memakai sandbox, selain itu produksi). Di dashboard Midtrans (Settings > Configuration) isi Payment Notification URL dengan `https://DOMAIN-ANDA/api/webhooks/midtrans`; notifikasi diverifikasi dengan signature dari Server Key. Pesanan lunas otomatis; transaksi kedaluwarsa membatalkan pesanan dan mengembalikan stok.
+- **QRIS dinamis:** isi `PAYMENT_QRIS` dengan teks hasil scan QR statis toko. Saat pembeli memilih QRIS, `src/lib/qris.ts` mengubahnya menjadi QRIS dinamis (tag 01 = 12, tag 54 = total pesanan, CRC16 dihitung ulang) dan halaman pesanan menampilkan kodenya. Pesanan tetap dikonfirmasi admin setelah bukti dikirim lewat WhatsApp.
+- **Midtrans (dinonaktifkan):** kode `src/lib/gateway.ts`, `src/app/api/webhooks/midtrans`, dan `gateway-events.ts` masih ada. Bagian di `src/app/(shop)/checkout/actions.ts` dikomentari; petunjuk mengaktifkan lagi ada di komentar itu (tambahkan "GATEWAY" ke enum `payment` dan `CHECKOUT_PAYMENTS` di `src/lib/shipping.ts`, isi `MIDTRANS_SERVER_KEY`, `MIDTRANS_ENABLED="true"`).
 - **Biteship:** isi `BITESHIP_API_KEY` dan `SHIPPING_ORIGIN_ZIP` (kode pos toko). Tanpa kunci, perkiraan tarif memakai `SHIPPING_ORIGIN_REGENCY` (kode kabupaten/kota toko). Ongkir dihitung ulang di server dari berat barang (kolom "Berat" di admin produk) + `SHIPPING_PACKING_GRAMS`, lalu ditambah `SHIPPING_MARKUP_PERCENT` dan `SHIPPING_PACKING_FEE` dan dibulatkan ke atas ke `SHIPPING_ROUND_TO`, supaya toko tidak nombok. Bila API Biteship gagal, checkout menampilkan galat (tarif tidak ditebak).
 
 ### Alamat terstruktur

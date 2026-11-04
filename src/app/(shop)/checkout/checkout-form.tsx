@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import { AddressPicker, type PickerInitial } from "@/components/address-picker";
 import { formatRupiah } from "@/lib/format";
 import { calcTotals } from "@/lib/pricing";
-import { PAYMENT_METHODS, PICKUP_OPTION, type PaymentMethodKey, type ShippingOption } from "@/lib/shipping";
+import { CHECKOUT_PAYMENTS, PAYMENT_METHODS, PICKUP_OPTION, type ShippingOption } from "@/lib/shipping";
 import type { Option } from "@/lib/wilayah";
 import { checkPromo, getShippingOptions, placeOrder, type CheckoutState, type PromoState } from "./actions";
 
@@ -17,14 +17,12 @@ export function CheckoutForm({
   items,
   subtotal,
   saved,
-  gateway,
   provinces,
   initialPlace,
 }: {
   items: Item[];
   subtotal: number;
   saved: Saved;
-  gateway: boolean;
   provinces: Option[];
   initialPlace: PickerInitial | null;
 }) {
@@ -33,7 +31,7 @@ export function CheckoutForm({
   const [villageCode, setVillageCode] = useState(initialPlace?.villageCode ?? "");
   const [quote, setQuote] = useState<{ zip: string; village: string; options: ShippingOption[]; error: string } | null>(null);
   const [courierId, setCourierId] = useState<string>("");
-  const payments = (Object.keys(PAYMENT_METHODS) as PaymentMethodKey[]).filter((k) => gateway || k !== "GATEWAY");
+  const payments = CHECKOUT_PAYMENTS;
   const [promoInput, setPromoInput] = useState("");
   const [promo, setPromo] = useState<PromoState | null>(null);
   const [checking, startCheck] = useTransition();
@@ -127,11 +125,7 @@ export function CheckoutForm({
               </span>
             </label>
           ))}
-          <p className="mt-3 text-xs text-muted">
-            {gateway
-              ? "Bayar online: kamu diarahkan ke halaman pembayaran aman dan pesanan otomatis lunas. Transfer manual: dikonfirmasi admin setelah kamu kirim bukti lewat WhatsApp."
-              : "Pembayaran dikonfirmasi manual oleh admin setelah kamu mengirim bukti lewat WhatsApp."}
-          </p>
+          <p className="mt-3 text-xs text-muted">Pembayaran dikonfirmasi manual oleh admin setelah kamu mengirim bukti lewat WhatsApp.</p>
         </fieldset>
       </div>
 

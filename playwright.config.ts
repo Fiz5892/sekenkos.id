@@ -17,7 +17,12 @@ export default defineConfig({
       AUTH_RATE_LIMIT_MAX: "100",
       BETTER_AUTH_URL: `http://localhost:${port}`,
       CRON_SECRET: "e2e-secret",
+      // Tes tidak boleh mengirim email sungguhan walau .env berisi akun SMTP.
+      SMTP_USER: "",
+      SMTP_PASS: "",
       PAYMENT_BANK: "BCA 111 222 333 a.n. Uji Otomatis",
+      PAYMENT_QRIS:
+        "00020101021126570011ID.DANA.WWW011893600915319033238802091903323880303UMI51440014ID.CO.QRIS.WWW0215ID10254432647890303UMI5204899953033605802ID5918HAFIZ KHOIRU ZAMAN6015KABUPATEN TULUN61056627263046B5E",
       // Tarif ongkir perkiraan yang deterministik (tanpa Biteship/markup) dan gateway tanpa kunci API,
       // tetapi dengan token webhook agar endpoint webhook bisa diuji.
       BITESHIP_API_KEY: "",

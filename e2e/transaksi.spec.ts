@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { cleanupTestData, createTestProduct, createTestPromo, eventCount, expireNow, makeAdmin, promoUsed, statusOf, stockOf } from "./db";
-import { addToCart, clickAction, fillCheckout, formAlert, newUser, stamp, testEmail } from "./helpers";
+import { addToCart, cartLink, clickAction, fillCheckout, formAlert, newUser, stamp, testEmail } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 test.setTimeout(120_000);
@@ -50,6 +50,8 @@ test("checkout: promo pembelian pertama, ongkir, total, dan stok berkurang", asy
   await p.getByRole("button", { name: "Buat Pesanan" }).click();
   await expect(p).toHaveURL(/\/pesanan\/PLY-[A-Z0-9]{6}$/);
   orderAni = orderCode(p);
+  // Badge keranjang di header langsung kosong tanpa memuat ulang halaman.
+  await expect(cartLink(p)).toBeVisible();
 
   await expect(p.getByRole("heading", { name: "Selesaikan pembayaran" })).toBeVisible();
   await expect(p.getByText("BCA 111 222 333 a.n. Uji Otomatis")).toBeVisible();

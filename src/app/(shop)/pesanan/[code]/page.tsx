@@ -8,7 +8,7 @@ import { OrderTimeline, StatusBadge } from "@/components/order-timeline";
 import { formatAddress } from "@/lib/address";
 import { db } from "@/lib/db";
 import { formatDateTime, formatRupiah } from "@/lib/format";
-import { paymentTarget } from "@/lib/payment";
+import { paymentTarget, qrisImage } from "@/lib/payment";
 import { requireUser } from "@/lib/session";
 import { PAYMENT_METHODS } from "@/lib/shipping";
 import { SITE } from "@/lib/site";
@@ -41,6 +41,7 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/pesanan/[code]"
   if (!order) notFound();
 
   const method = PAYMENT_METHODS[order.paymentMethod];
+  const qr = order.status === "PENDING_PAYMENT" && order.paymentMethod === "QRIS" ? await qrisImage(order.total) : null;
   const wa = `https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
     `Halo sekenkos.id, saya sudah membayar pesanan ${order.code} sebesar ${formatRupiah(order.total)} via ${method.label}. Bukti pembayaran saya lampirkan di chat ini.`,
   )}`;
@@ -86,11 +87,21 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/pesanan/[code]"
           <p className="mt-2">
             Total yang harus dibayar: <b className="text-2xl">{formatRupiah(order.total)}</b>
           </p>
-          <p className="mt-1">
-            {method.label}: <b>{paymentTarget(order.paymentMethod)}</b>
-          </p>
+          {qr ? (
+            <div className="mt-3 flex flex-col items-center gap-2 rounded-lg bg-white p-4 sm:w-fit">
+              {/* eslint-disable-next-line @next/next/no-img-element -- data URL buatan sendiri, tidak perlu optimasi gambar */}
+              <img src={qr} alt={`QRIS untuk pesanan ${order.code}, nominal ${formatRupiah(order.total)}`} width={240} height={240} className="size-60" />
+              <p className="text-center text-sm">
+                Scan dengan aplikasi bank / e-wallet apa pun. Nominal <b>{formatRupiah(order.total)}</b> terisi otomatis.
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1">
+              {method.label}: <b>{order.paymentMethod === "QRIS" ? "QRIS belum diatur. Hubungi admin lewat WhatsApp." : paymentTarget(order.paymentMethod)}</b>
+            </p>
+          )}
           <ol className="mt-3 list-decimal pl-5 text-sm">
-            <li>Transfer sesuai nominal di atas, tepat sampai rupiah terakhir.</li>
+            <li>{qr ? "Scan QRIS di atas dan bayar" : "Transfer"} sesuai nominal di atas, tepat sampai rupiah terakhir.</li>
             <li>Simpan bukti pembayaran.</li>
             <li>Tekan tombol di bawah dan kirim bukti lewat WhatsApp. Pesan sudah terisi kode pesanan dan nominal.</li>
           </ol>
