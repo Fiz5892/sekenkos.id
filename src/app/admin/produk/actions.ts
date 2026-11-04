@@ -18,6 +18,7 @@ const schema = z.object({
   condition: z.enum(["BARU", "SEPERTI_BARU", "BEKAS_BAIK"], "Pilih kondisi."),
   size: z.string().trim().min(1, "Ukuran wajib diisi.").max(60),
   stock: z.coerce.number().int("Stok harus bilangan bulat.").min(0, "Stok tidak boleh negatif.").max(1000),
+  weightGrams: z.coerce.number().int("Berat harus bilangan bulat (gram).").min(10, "Berat minimal 10 gram.").max(50_000, "Berat maksimal 50.000 gram (50 kg)."),
   description: z.string().trim().min(10, "Deskripsi minimal 10 karakter.").max(2000),
   status: z.enum(["ACTIVE", "ARCHIVED"]),
 });
@@ -38,6 +39,7 @@ async function save(formData: FormData, id: string | null) {
     condition: text(formData.get("condition")),
     size: text(formData.get("size")),
     stock: text(formData.get("stock")),
+    weightGrams: text(formData.get("weightGrams")),
     description: text(formData.get("description")),
     status: text(formData.get("status")) || "ACTIVE",
   });
@@ -79,6 +81,7 @@ async function save(formData: FormData, id: string | null) {
     condition: d.condition,
     size: d.size,
     stock: d.stock,
+    weightGrams: d.weightGrams,
     description: d.description,
     images,
     isPhoto: formData.get("isPhoto") === "on",

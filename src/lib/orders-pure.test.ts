@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { generateOrderCode, normalizeOrderCode } from "./order-code";
 import { canAdvance, canCancel, nextStep } from "./order-status";
 import { calcTotals } from "./pricing";
-import { COURIERS, getCourier } from "./shipping";
+import { PICKUP_OPTION } from "./shipping";
 
 describe("calcTotals", () => {
   it("menghitung diskon persen, ongkir, dan total", () => {
@@ -57,9 +57,7 @@ describe("kode pesanan", () => {
 });
 
 describe("kurir", () => {
-  it("pengambilan di tempat gratis, kurir tak dikenal ditolak", () => {
-    expect(getCourier("pickup")?.cost).toBe(0);
-    expect(getCourier("rahasia")).toBeUndefined();
-    expect(COURIERS.length).toBeGreaterThan(0);
+  it("pengambilan di tempat gratis", () => {
+    expect(PICKUP_OPTION.cost).toBe(0);
   });
 });

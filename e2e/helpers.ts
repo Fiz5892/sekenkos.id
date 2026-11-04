@@ -54,13 +54,22 @@ export async function addToCart(page: Page, slug: string, qty = 1) {
   await clickAction(page, "Tambah ke Keranjang");
 }
 
-export async function fillCheckout(page: Page, courier: RegExp = /SiCepat/) {
+/** Memilih wilayah bertingkat; kecamatan dan desa diambil yang pertama dari daftar. Kode pos terisi dari desa. */
+export async function pickPlace(page: Page, province = "Jawa Timur", regency = "Kota Malang") {
+  await page.getByLabel("Provinsi").selectOption({ label: province });
+  await page.getByLabel("Kota / Kabupaten").selectOption({ label: regency });
+  await page.getByLabel("Kecamatan").selectOption({ index: 1 });
+  await page.getByLabel("Desa / Kelurahan").selectOption({ index: 1 });
+  await expect(page.getByLabel("Kode pos")).toHaveValue(/^\d{5}$/);
+}
+
+/** Mengisi form checkout. Ongkir dihitung dari wilayah yang dipilih, lalu pilihan kurir dipilih lewat namanya. */
+export async function fillCheckout(page: Page, courier: RegExp = /Reguler/) {
   await page.getByLabel("Nama penerima").fill("Budi Penerima");
   await page.getByLabel("Nomor HP / WhatsApp").fill("081234567890");
-  await page.getByLabel("Alamat lengkap").fill("Jl. Soekarno Hatta No. 9, RT 1 RW 2");
-  await page.getByLabel("Kota / Kabupaten").fill("Malang");
-  await page.getByLabel("Kode pos").fill("65141");
-  await page.getByLabel("Jasa pengiriman").selectOption({ label: (await page.getByLabel("Jasa pengiriman").locator("option").allTextContents()).find((t) => courier.test(t))! });
+  await page.getByLabel("Detail alamat").fill("Jl. Soekarno Hatta No. 9, RT 1 RW 2");
+  await pickPlace(page);
+  await page.getByRole("radio", { name: courier }).check();
 }
 
 // Next memasang elemen role=alert untuk pengumuman rute; yang dimaksud tes adalah pesan di dalam halaman.

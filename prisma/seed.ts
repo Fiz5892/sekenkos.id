@@ -2,7 +2,7 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { databaseSsl } from "../src/lib/db-ssl";
-import { categories, products, promo } from "./seed-data";
+import { WEIGHTS, categories, products, promo } from "./seed-data";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL, ssl: databaseSsl() }),
@@ -27,6 +27,7 @@ async function main() {
       images: [p.image],
       isPhoto: p.isPhoto ?? false,
       popularity: p.popularity,
+      weightGrams: WEIGHTS[p.slug] ?? 500,
       createdAt: new Date(p.createdAt),
     };
     // Stok dan foto hanya diisi saat produk pertama dibuat, agar seed ulang tidak menimpa stok berjalan

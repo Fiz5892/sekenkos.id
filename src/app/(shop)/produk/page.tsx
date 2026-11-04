@@ -6,6 +6,7 @@ import { ProductCard } from "@/components/product-card";
 import { CONDITION_PARAM, SORTS, buildWhere, parseCatalogQuery } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { runExpiry } from "@/lib/maintenance";
+import { rankSimilar } from "@/lib/similar";
 import { CONDITION_LABEL } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -44,6 +45,21 @@ async function Catalog({ searchParams }: Pick<PageProps<"/produk">, "searchParam
       include: { category: { select: { name: true } } },
     }),
   ]);
+
+  // Hasil pencarian kosong atau sedikit: tawarkan barang yang mirip (salah ketik, sinonim, sekategori).
+  const similar =
+    query.q && products.length < 4
+      ? rankSimilar(
+          query.q,
+          await db.product.findMany({
+            where: { status: "ACTIVE", id: { notIn: products.map((p) => p.id) } },
+            orderBy: { popularity: "desc" },
+            take: 500,
+            include: { category: { select: { name: true, slug: true } } },
+          }),
+          products.length ? 4 : 6,
+        )
+      : undefined;
 
   const activeCategory = categories.find((c) => c.slug === query.kategori);
   const title = query.q ? `Hasil pencarian “${query.q}”` : activeCategory ? activeCategory.name : "Semua produk";
@@ -142,12 +158,37 @@ async function Catalog({ searchParams }: Pick<PageProps<"/produk">, "searchParam
             ))}
           </div>
         ) : (
-          <div className="rounded-card bg-header p-10 text-center text-muted">
-            Tidak ada produk yang cocok. Coba kata kunci lain atau{" "}
-            <Link href="/produk" className="text-brand underline">
-              reset filter
-            </Link>
-            .
+          <div className="rounded-card bg-header p-8 text-center text-muted">
+            <p>
+              Belum ada barang yang cocok dengan “{query.q || "filter ini"}”. Barang preloved datang dan pergi, jadi coba cek lagi nanti atau{" "}
+              <Link href="/produk" className="text-brand underline">
+                reset filter
+              </Link>
+              .
+            </p>
+            {similar?.suggestion && (
+              <p className="mt-2">
+                Mungkin maksudmu{" "}
+                <Link href={`/produk?q=${encodeURIComponent(similar.suggestion)}`} className="font-bold text-brand underline">
+                  {similar.suggestion}
+                </Link>
+                ?
+              </p>
+            )}
+          </div>
+        )}
+
+        {similar && similar.items.length > 0 && (
+          <div className="mt-10">
+            <h2 className="text-2xl font-bold">{similar.kind === "similar" ? "Mungkin yang kamu cari" : "Barang yang lagi diminati"}</h2>
+            <p className="mb-4 mt-1 text-sm text-muted">
+              {similar.kind === "similar" ? "Barang dengan nama, jenis, atau kategori yang mirip." : "Belum ada yang mirip, tapi barang ini sering dilihat."}
+            </p>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+              {similar.items.map((p) => (
+                <ProductCard key={p.id} p={p} />
+              ))}
+            </div>
           </div>
         )}
       </section>

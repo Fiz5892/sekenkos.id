@@ -1,11 +1,11 @@
 # sekenkos.id
 
 Toko barang preloved (*Secondhand, First Choice*). Next.js + TypeScript + Tailwind, PostgreSQL via Prisma, Better Auth.
-Pembayaran manual: pembeli transfer lalu konfirmasi lewat WhatsApp; admin memverifikasi dan menandai pesanan dibayar.
+Pembayaran: bayar online lewat Midtrans (VA bank, QRIS, e-wallet, kartu; lunas otomatis via webhook) dan/atau transfer manual dengan konfirmasi WhatsApp. Ongkir dihitung otomatis dari berat barang dan kode pos tujuan (Biteship).
 
 ## Fitur
 
-- **Pembeli:** katalog dengan filter/urutan, keranjang, checkout (alamat, kurir, kode promo), instruksi bayar + tautan WhatsApp, riwayat dan lacak pesanan, profil dan alamat tersimpan.
+- **Pembeli:** katalog dengan filter/urutan, keranjang, checkout (alamat, ongkir otomatis per kode pos, kode promo), instruksi bayar + tautan WhatsApp, riwayat dan lacak pesanan, profil dan alamat tersimpan.
 - **Admin** (`/admin`): ringkasan, pesanan (dibayar → dikemas → dikirim dengan resi → diterima, batalkan + kembalikan stok), produk (tambah/ubah/arsip, unggah foto), kode promo, pesan masuk.
 - **Sistem:** stok dikunci atomik saat pesanan dibuat; pesanan tak dibayar 24 jam dibatalkan otomatis (cron harian + oportunistik); email transaksional lewat Resend.
 
@@ -54,6 +54,17 @@ Menjadikan akun sebagai admin (daftar dulu lewat /daftar): `npm run admin:make -
 Lihat `.env.example`. Yang wajib di produksi: `DATABASE_URL`, `DATABASE_CA`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`,
 `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WHATSAPP_NUMBER`, `PAYMENT_BANK` / `PAYMENT_EWALLET`, `RESEND_API_KEY`, `EMAIL_FROM`, `CRON_SECRET`.
 Opsional: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_BUCKET` (default `products`, harus bucket publik) untuk unggah foto produk. Setelah mengisinya, jalankan `npm run storage:setup`: skrip membuat bucket publik (hanya JPG/PNG/WebP, maks 2 MB) dan memindahkan foto yang sudah ada ke sana.
+
+### Pembayaran online (Midtrans) dan ongkir dinamis (Biteship)
+
+Keduanya opsional dan aktif begitu kuncinya diisi di `.env`; tanpa kunci, toko tetap jalan dengan transfer manual dan tarif ongkir perkiraan.
+
+- **Midtrans:** isi `MIDTRANS_SERVER_KEY` (kunci berawalan `SB-` memakai sandbox, selain itu produksi). Di dashboard Midtrans (Settings > Configuration) isi Payment Notification URL dengan `https://DOMAIN-ANDA/api/webhooks/midtrans`; notifikasi diverifikasi dengan signature dari Server Key. Pesanan lunas otomatis; transaksi kedaluwarsa membatalkan pesanan dan mengembalikan stok.
+- **Biteship:** isi `BITESHIP_API_KEY` dan `SHIPPING_ORIGIN_ZIP` (kode pos toko). Tanpa kunci, perkiraan tarif memakai `SHIPPING_ORIGIN_REGENCY` (kode kabupaten/kota toko). Ongkir dihitung ulang di server dari berat barang (kolom "Berat" di admin produk) + `SHIPPING_PACKING_GRAMS`, lalu ditambah `SHIPPING_MARKUP_PERCENT` dan `SHIPPING_PACKING_FEE` dan dibulatkan ke atas ke `SHIPPING_ROUND_TO`, supaya toko tidak nombok. Bila API Biteship gagal, checkout menampilkan galat (tarif tidak ditebak).
+
+### Alamat terstruktur
+
+Pembeli memilih provinsi > kota/kabupaten > kecamatan > desa/kelurahan; kode pos terisi dari desa. Datanya (38 provinsi, ±83 ribu desa/kelurahan, Kepmendagri 300.2.2-2138 Tahun 2025) ada di `src/data/wilayah/` dari proyek [cahyadsn/wilayah](https://github.com/cahyadsn/wilayah) dan [cahyadsn/wilayah_kodepos](https://github.com/cahyadsn/wilayah_kodepos) (lisensi MIT). Server menurunkan nama wilayah dari kode desa, jadi nama yang dikirim browser tidak dipercaya. Untuk memperbarui data: unduh `wilayah.sql` dan `wilayah_kodepos.sql`, lalu jalankan `node scripts/build-wilayah.mjs <wilayah.sql> <wilayah_kodepos.sql>`.
 
 ## Deploy ke Vercel
 

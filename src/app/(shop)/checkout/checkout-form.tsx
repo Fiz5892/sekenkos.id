@@ -1,25 +1,65 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { AddressPicker, type PickerInitial } from "@/components/address-picker";
 import { formatRupiah } from "@/lib/format";
 import { calcTotals } from "@/lib/pricing";
-import { COURIERS, PAYMENT_METHODS, type PaymentMethodKey } from "@/lib/shipping";
-import { checkPromo, placeOrder, type CheckoutState, type PromoState } from "./actions";
+import { PAYMENT_METHODS, PICKUP_OPTION, type PaymentMethodKey, type ShippingOption } from "@/lib/shipping";
+import type { Option } from "@/lib/wilayah";
+import { checkPromo, getShippingOptions, placeOrder, type CheckoutState, type PromoState } from "./actions";
 
 type Item = { id: string; name: string; qty: number; price: number };
-type Saved = { recipient: string; phone: string; street: string; city: string; zip: string };
+type Saved = { recipient: string; phone: string; street: string };
 
 const input = "w-full rounded-lg border border-line px-3 py-2.5 outline-none focus:border-brand";
 
-export function CheckoutForm({ items, subtotal, saved }: { items: Item[]; subtotal: number; saved: Saved }) {
+export function CheckoutForm({
+  items,
+  subtotal,
+  saved,
+  gateway,
+  provinces,
+  initialPlace,
+}: {
+  items: Item[];
+  subtotal: number;
+  saved: Saved;
+  gateway: boolean;
+  provinces: Option[];
+  initialPlace: PickerInitial | null;
+}) {
   const [state, action, pending] = useActionState<CheckoutState, FormData>(placeOrder, {});
-  const [courierId, setCourierId] = useState<string>(COURIERS[0].id);
+  const [zip, setZip] = useState(initialPlace?.zip ?? "");
+  const [villageCode, setVillageCode] = useState(initialPlace?.villageCode ?? "");
+  const [quote, setQuote] = useState<{ zip: string; village: string; options: ShippingOption[]; error: string } | null>(null);
+  const [courierId, setCourierId] = useState<string>("");
+  const payments = (Object.keys(PAYMENT_METHODS) as PaymentMethodKey[]).filter((k) => gateway || k !== "GATEWAY");
   const [promoInput, setPromoInput] = useState("");
   const [promo, setPromo] = useState<PromoState | null>(null);
   const [checking, startCheck] = useTransition();
 
-  const courier = COURIERS.find((c) => c.id === courierId)!;
-  const totals = calcTotals(subtotal, courier.cost, promo?.ok ? promo.percent : 0);
+  // Ambil tarif ongkir tiap kali kode pos lengkap (5 digit) atau server meminta tarif dimuat ulang.
+  const refresh = state.refreshShipping ? state : null;
+  const validZip = /^\d{5}$/.test(zip) && Boolean(villageCode);
+  useEffect(() => {
+    if (!validZip) return;
+    let stale = false; // jawaban untuk alamat sebelumnya diabaikan
+    getShippingOptions(zip, villageCode).then((r) => {
+      if (!stale) setQuote({ zip, village: villageCode, options: r.options ?? [PICKUP_OPTION], error: r.error ?? "" });
+    });
+    return () => {
+      stale = true;
+    };
+  }, [zip, villageCode, validZip, refresh]);
+  const ready = validZip && quote?.zip === zip && quote.village === villageCode;
+  const options = ready ? quote.options : [PICKUP_OPTION];
+  const shipError = ready ? quote.error : "";
+  const loadingShip = validZip && !ready;
+
+  // Pilihan terdahulu dipertahankan bila masih ada; jika tidak, pilih yang termurah (kurir, bukan ambil di tempat).
+  const selected = options.find((o) => o.id === courierId) ?? options.find((o) => o.id !== PICKUP_OPTION.id) ?? options[0];
+  const totals = calcTotals(subtotal, selected.cost, promo?.ok ? promo.percent : 0);
+  const canOrder = !pending && !loadingShip && Boolean(selected);
 
   return (
     <form action={action} className="grid gap-8 lg:grid-cols-[1fr_360px]">
@@ -35,34 +75,50 @@ export function CheckoutForm({ items, subtotal, saved }: { items: Item[]; subtot
             </Label>
           </div>
           <div className="mt-4">
-            <Label text="Alamat lengkap">
-              <textarea name="street" defaultValue={saved.street} required rows={2} autoComplete="street-address" placeholder="Jalan, nomor, RT/RW, kelurahan" className={input} />
-            </Label>
-          </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Label text="Kota / Kabupaten">
-              <input name="city" defaultValue={saved.city} required autoComplete="address-level2" className={input} />
-            </Label>
-            <Label text="Kode pos">
-              <input name="zip" defaultValue={saved.zip} required inputMode="numeric" maxLength={5} autoComplete="postal-code" className={input} />
-            </Label>
+            <AddressPicker
+              provinces={provinces}
+              initial={initialPlace}
+              onChange={(v) => {
+                setZip(v.zip);
+                setVillageCode(v.villageCode);
+              }}
+            />
           </div>
           <div className="mt-4">
-            <Label text="Jasa pengiriman">
-              <select name="courier" value={courierId} onChange={(e) => setCourierId(e.target.value)} className={input}>
-                {COURIERS.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} — {c.cost ? formatRupiah(c.cost) : "Gratis"} ({c.eta})
-                  </option>
-                ))}
-              </select>
+            <Label text="Detail alamat">
+              <textarea name="street" defaultValue={saved.street} required rows={2} autoComplete="street-address" placeholder="Nama jalan, nomor rumah, RT/RW, patokan" className={input} />
             </Label>
           </div>
+          <fieldset className="mt-4" aria-busy={loadingShip}>
+            <legend className="text-sm font-bold">Jasa pengiriman</legend>
+            <input type="hidden" name="courier" value={selected.id} />
+            <input type="hidden" name="shippingCost" value={selected.cost} />
+            {loadingShip && <p className="mt-2 text-sm text-muted">Menghitung ongkir…</p>}
+            {!validZip && <p className="mt-2 text-sm text-muted">Pilih alamat sampai desa / kelurahan untuk melihat ongkir.</p>}
+            {!loadingShip && shipError && (
+              <p role="status" className="mt-2 text-sm text-danger">
+                {shipError}
+              </p>
+            )}
+            <div className="mt-2 grid gap-2">
+              {options.map((o) => (
+                <label key={o.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-line p-3 has-[:checked]:border-brand has-[:checked]:bg-header">
+                  <input type="radio" name="courier-choice" checked={selected.id === o.id} onChange={() => setCourierId(o.id)} />
+                  <span className="flex-1">
+                    <b>{o.name}</b>
+                    <span className="block text-sm text-muted">{o.eta}</span>
+                  </span>
+                  <b>{o.cost ? formatRupiah(o.cost) : "Gratis"}</b>
+                </label>
+              ))}
+            </div>
+            {options.some((o) => o.estimate) && <p className="mt-2 text-xs text-muted">Tarif berupa perkiraan. Total akhir tertera di halaman pesanan.</p>}
+          </fieldset>
         </section>
 
         <fieldset className="rounded-card border border-line p-5">
           <legend className="px-1 text-xl font-bold">Metode pembayaran</legend>
-          {(Object.keys(PAYMENT_METHODS) as PaymentMethodKey[]).map((key, i) => (
+          {payments.map((key, i) => (
             <label key={key} className="mt-2 flex cursor-pointer items-start gap-3 rounded-lg border border-line p-3 has-[:checked]:border-brand has-[:checked]:bg-header">
               <input type="radio" name="payment" value={key} defaultChecked={i === 0} className="mt-1" />
               <span>
@@ -71,7 +127,11 @@ export function CheckoutForm({ items, subtotal, saved }: { items: Item[]; subtot
               </span>
             </label>
           ))}
-          <p className="mt-3 text-xs text-muted">Pembayaran dikonfirmasi manual oleh admin setelah kamu mengirim bukti lewat WhatsApp.</p>
+          <p className="mt-3 text-xs text-muted">
+            {gateway
+              ? "Bayar online: kamu diarahkan ke halaman pembayaran aman dan pesanan otomatis lunas. Transfer manual: dikonfirmasi admin setelah kamu kirim bukti lewat WhatsApp."
+              : "Pembayaran dikonfirmasi manual oleh admin setelah kamu mengirim bukti lewat WhatsApp."}
+          </p>
         </fieldset>
       </div>
 
@@ -127,7 +187,7 @@ export function CheckoutForm({ items, subtotal, saved }: { items: Item[]; subtot
             {state.error}
           </p>
         )}
-        <button disabled={pending} className="mt-4 w-full rounded-full bg-foreground py-3 font-bold text-white hover:bg-black disabled:opacity-60">
+        <button disabled={!canOrder} className="mt-4 w-full rounded-full bg-foreground py-3 font-bold text-white hover:bg-black disabled:opacity-60">
           {pending ? "Memproses…" : "Buat Pesanan"}
         </button>
         <p className="mt-2 text-xs text-muted">

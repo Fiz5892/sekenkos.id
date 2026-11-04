@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { generateOrderCode } from "@/lib/order-code";
 import { CANCELLABLE, PREVIOUS } from "@/lib/order-status";
 import { calcTotals } from "@/lib/pricing";
-import { getCourier } from "@/lib/shipping";
+import { expireInvoice } from "@/lib/gateway";
 
 export const ORDER_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -15,13 +15,26 @@ export class OrderError extends Error {}
 
 type Tx = Prisma.TransactionClient;
 
-export type Address = { recipient: string; phone: string; street: string; city: string; zip: string };
+export type Address = {
+  recipient: string;
+  phone: string;
+  street: string;
+  village: string;
+  district: string;
+  /** Kabupaten/kota. */
+  city: string;
+  province: string;
+  zip: string;
+};
 
 export type CheckoutInput = {
   userId: string;
   lines: CartLine[];
   address: Address;
-  courierId: string;
+  /** Pilihan ongkir yang sudah dihitung ulang di server (lihat resolveShipping). */
+  shipping: { name: string; cost: number };
+  /** Berat paket (gram) yang dipakai untuk tarif tersebut. */
+  totalWeight: number;
   paymentMethod: PaymentMethod;
   promoCode?: string;
 };
@@ -44,13 +57,11 @@ const isCodeCollision = (e: unknown) =>
   typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002";
 
 export async function createOrder(input: CheckoutInput) {
-  const courier = getCourier(input.courierId);
-  if (!courier) throw new OrderError("Jasa pengiriman tidak valid.");
   if (input.lines.length === 0) throw new OrderError("Keranjang kosong.");
 
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      return await db.$transaction((tx) => build(tx, input, courier, generateOrderCode()));
+      return await db.$transaction((tx) => build(tx, input, generateOrderCode()));
     } catch (e) {
       if (isCodeCollision(e)) continue; // kode pesanan kebetulan sama; buat ulang
       throw e;
@@ -59,7 +70,7 @@ export async function createOrder(input: CheckoutInput) {
   throw new OrderError("Gagal membuat pesanan. Silakan coba lagi.");
 }
 
-async function build(tx: Tx, input: CheckoutInput, courier: { name: string; cost: number }, code: string) {
+async function build(tx: Tx, input: CheckoutInput, code: string) {
   const products = await tx.product.findMany({
     where: { id: { in: input.lines.map((l) => l.id) }, status: "ACTIVE" },
   });
@@ -95,7 +106,7 @@ async function build(tx: Tx, input: CheckoutInput, courier: { name: string; cost
     percent = promo.percent;
   }
 
-  const totals = calcTotals(subtotal, courier.cost, percent);
+  const totals = calcTotals(subtotal, input.shipping.cost, percent);
   const { address: a } = input;
   return tx.order.create({
     data: {
@@ -105,13 +116,17 @@ async function build(tx: Tx, input: CheckoutInput, courier: { name: string; cost
       discount: totals.discount,
       shippingCost: totals.shipping,
       total: totals.total,
-      courier: courier.name,
+      courier: input.shipping.name,
+      totalWeight: input.totalWeight,
       paymentMethod: input.paymentMethod,
       promoId,
       shipName: a.recipient,
       shipPhone: a.phone,
       shipStreet: a.street,
+      shipVillage: a.village,
+      shipDistrict: a.district,
       shipCity: a.city,
+      shipProvince: a.province,
       shipZip: a.zip,
       expiresAt: new Date(Date.now() + ORDER_TTL_MS),
       items: { create: items },
@@ -176,6 +191,10 @@ export async function cancelOrder(orderId: string, actorId: string | null, note:
     }
     await tx.orderEvent.create({ data: { orderId, status: "CANCELLED", actorId, note } });
     return { changed: true as const, order };
+  }).then(async (r) => {
+    // Pembatalan sebelum invoice kedaluwarsa: tutup invoice agar tidak bisa dibayar lagi.
+    if (r.changed && r.order?.gatewayInvoiceId && r.order.expiresAt > new Date()) await expireInvoice(r.order.gatewayInvoiceId);
+    return r;
   });
 }
 

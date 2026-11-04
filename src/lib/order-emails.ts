@@ -3,7 +3,7 @@ import { sendEmail } from "@/lib/email";
 import { formatRupiah } from "@/lib/format";
 import { SITE } from "@/lib/site";
 
-type OrderMail = { code: string; total: number; courier: string; trackingNumber: string | null; user: { email: string; name: string } };
+type OrderMail = { code: string; total: number; courier: string; trackingNumber: string | null; paymentMethod?: string; user: { email: string; name: string } };
 
 const link = (code: string) => `${SITE.url}/pesanan/${code}`;
 const sign = `\n\nSalam,\n${SITE.name}`;
@@ -23,11 +23,13 @@ export const emailOrderCreated = (o: OrderMail, expiresAt: Date) =>
     `Pesanan ${o.code} dibuat`,
     `Halo ${o.user.name},\n\nPesananmu ${o.code} sudah kami terima. Total yang perlu dibayar: ${formatRupiah(o.total)}.\n` +
       `Selesaikan pembayaran sebelum ${expiresAt.toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" })} ` +
-      `lalu kirim bukti lewat WhatsApp. Petunjuk lengkap: ${link(o.code)}${sign}`,
+      (o.paymentMethod === "GATEWAY"
+        ? `lewat tombol "Bayar sekarang" di halaman pesanan; pesanan otomatis lunas setelah dibayar. Tautan: ${link(o.code)}${sign}`
+        : `lalu kirim bukti lewat WhatsApp. Petunjuk lengkap: ${link(o.code)}${sign}`),
   );
 
 export const emailOrderPaid = (o: OrderMail) =>
-  safeSend(o.user.email, `Pembayaran pesanan ${o.code} diterima`, `Halo ${o.user.name},\n\nPembayaranmu sudah kami verifikasi. Pesananmu segera dikemas.\nPantau status: ${link(o.code)}${sign}`);
+  safeSend(o.user.email, `Pembayaran pesanan ${o.code} diterima`, `Halo ${o.user.name},\n\nPembayaranmu sudah kami terima. Pesananmu segera dikemas.\nPantau status: ${link(o.code)}${sign}`);
 
 export const emailOrderShipped = (o: OrderMail) =>
   safeSend(

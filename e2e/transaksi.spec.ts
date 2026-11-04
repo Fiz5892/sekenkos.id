@@ -37,15 +37,15 @@ test("checkout: promo pembelian pertama, ongkir, total, dan stok berkurang", asy
   const p = ani.page;
   await addToCart(p, multi, 2);
   await p.goto("/checkout");
-  await fillCheckout(p, /SiCepat/);
+  await fillCheckout(p, /Reguler/);
 
   await p.getByLabel("Kode promo").fill(promo.toLowerCase());
   await expect(async () => {
     await p.getByRole("button", { name: "Pakai" }).click();
     await expect(p.getByRole("status").filter({ hasText: "Diskon 10% dipakai." })).toBeVisible({ timeout: 2500 });
   }).toPass();
-  // Subtotal 40.000 − diskon 4.000 + SiCepat 9.000
-  await expect(p.getByText("Rp45.000")).toBeVisible();
+  // Subtotal 40.000 − diskon 4.000 + ongkir. Berat 2 × 500 g + kemasan 200 g = 1,25 kg → 2 kg: 9.000 + 6.000 = 15.000.
+  await expect(p.getByText("Rp51.000")).toBeVisible();
 
   await p.getByRole("button", { name: "Buat Pesanan" }).click();
   await expect(p).toHaveURL(/\/pesanan\/PLY-[A-Z0-9]{6}$/);
@@ -56,7 +56,7 @@ test("checkout: promo pembelian pertama, ongkir, total, dan stok berkurang", asy
   const wa = await p.getByRole("link", { name: "Konfirmasi lewat WhatsApp" }).getAttribute("href");
   expect(wa).toContain("https://wa.me/");
   expect(decodeURIComponent(wa!)).toContain(orderAni);
-  expect(decodeURIComponent(wa!)).toContain("Rp45.000");
+  expect(decodeURIComponent(wa!)).toContain("Rp51.000");
 
   expect(await stockOf(multi)).toBe(3);
   expect(await promoUsed(promo)).toBe(1);
@@ -76,7 +76,10 @@ test("kode promo pembelian pertama ditolak untuk pembeli yang sudah pernah memes
   const p = ani.page;
   await addToCart(p, multi, 1);
   await p.goto("/checkout");
-  await expect(p.getByLabel("Alamat lengkap")).toHaveValue(/Soekarno Hatta/); // alamat terisi dari pesanan sebelumnya
+  await expect(p.getByLabel("Detail alamat")).toHaveValue(/Soekarno Hatta/); // alamat terisi dari pesanan sebelumnya
+  await expect(p.getByLabel("Provinsi")).toHaveValue("35");
+  await expect(p.getByLabel("Kota / Kabupaten").locator("option:checked")).toHaveText("Kota Malang");
+  await expect(p.getByLabel("Desa / Kelurahan")).not.toHaveValue("");
   await p.getByLabel("Kode promo").fill(promo);
   await expect(async () => {
     await p.getByRole("button", { name: "Pakai" }).click();
@@ -217,6 +220,7 @@ test("admin menambah produk dengan beberapa foto, slider di toko, menolak file p
   await p.goto("/admin/produk/baru");
   await fillBasic();
   await p.getByLabel("Tambah foto").setInputFiles({ name: "palsu.png", mimeType: "image/png", buffer: Buffer.from("<script>alert(1)</script>") });
+  await expect(p.getByAltText("Foto baru palsu.png")).toBeVisible(); // pemilih foto mengompresi dulu secara async
   await p.getByRole("button", { name: "Tambah produk" }).click();
   await expect(formAlert(p)).toContainText("bukan foto");
 
@@ -227,9 +231,10 @@ test("admin menambah produk dengan beberapa foto, slider di toko, menolak file p
     { name: "b.png", mimeType: "image/png", buffer: PNG },
     { name: "c.png", mimeType: "image/png", buffer: PNG },
   ]);
-  await expect(p.getByAltText("Foto baru c.png")).toBeVisible();
-  await p.getByRole("button", { name: "Batalkan c.png" }).click();
-  await expect(p.getByAltText("Foto baru c.png")).toHaveCount(0);
+  // Foto valid dikompresi ke WebP di browser, jadi nama berkas pratinjau berakhiran .webp.
+  await expect(p.getByAltText("Foto baru c.webp")).toBeVisible();
+  await p.getByRole("button", { name: "Batalkan c.webp" }).click();
+  await expect(p.getByAltText("Foto baru c.webp")).toHaveCount(0);
   await p.getByRole("button", { name: "Tambah produk" }).click();
   await expect(p.getByText("Produk disimpan.")).toBeVisible();
   await expect(p.getByAltText(/^Foto \d$/)).toHaveCount(2);
@@ -256,7 +261,7 @@ test("admin menambah produk dengan beberapa foto, slider di toko, menolak file p
   expect(id).toBeTruthy();
   const res = await pub.request.get(`/img/${id}`);
   expect(res.status()).toBe(200);
-  expect(res.headers()["content-type"]).toBe("image/png");
+  expect(res.headers()["content-type"]).toBe("image/webp"); // dikompresi ke WebP di browser sebelum diunggah
   expect(res.headers()["cache-control"]).toContain("immutable");
   expect((await pub.request.get("/img/tidakada0000000000000000")).status()).toBe(404);
 

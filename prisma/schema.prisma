@@ -38,6 +38,8 @@ enum OrderStatus {
 enum PaymentMethod {
   BANK_TRANSFER
   EWALLET
+  // Bayar online lewat payment gateway (Midtrans): VA bank, QRIS, e-wallet, kartu. Status dibayar otomatis via webhook.
+  GATEWAY
 }
 
 model User {
@@ -61,15 +63,21 @@ model User {
 }
 
 model Address {
-  id        String   @id @default(cuid())
-  userId    String
-  recipient String
-  phone     String
-  street    String
-  city      String
-  zip       String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  userId      String
+  recipient   String
+  phone       String
+  street      String
+  // Alamat terstruktur: city = kabupaten/kota. villageCode = kode desa/kelurahan (Kepmendagri), dipakai mengisi ulang form.
+  // Baris lama (sebelum alamat terstruktur) punya province/district/village/villageCode kosong.
+  province    String   @default("")
+  city        String
+  district    String   @default("")
+  village     String   @default("")
+  villageCode String   @default("")
+  zip         String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -96,6 +104,8 @@ model Product {
   price       Int
   condition   ProductCondition
   size        String
+  // Berat barang (gram) untuk menghitung ongkir. Diisi admin; bawaan 500 g.
+  weightGrams Int              @default(500)
   description String
   // Barang preloved umumnya 1 unit. Stok dikurangi atomik saat pesanan dibuat
   // dan dikembalikan saat pesanan batal/kedaluwarsa.
@@ -134,32 +144,41 @@ model Promo {
 }
 
 model Order {
-  id             String        @id @default(cuid())
+  id               String        @id @default(cuid())
   // Kode yang tampil ke pembeli dan dipakai di pesan WhatsApp, mis. PLY-7K3M9Q.
-  code           String        @unique
-  userId         String
-  status         OrderStatus   @default(PENDING_PAYMENT)
-  subtotal       Int
-  discount       Int           @default(0)
-  shippingCost   Int
-  total          Int
-  courier        String
-  trackingNumber String?
-  paymentMethod  PaymentMethod
-  promoId        String?
+  code             String        @unique
+  userId           String
+  status           OrderStatus   @default(PENDING_PAYMENT)
+  subtotal         Int
+  discount         Int           @default(0)
+  shippingCost     Int
+  total            Int
+  courier          String
+  // Berat paket (gram) yang dipakai saat menghitung ongkir, termasuk bahan kemasan.
+  totalWeight      Int           @default(0)
+  trackingNumber   String?
+  paymentMethod    PaymentMethod
+  // Diisi untuk pembayaran GATEWAY: id & tautan bayar Midtrans (id = kode pesanan), dan kanal yang dipakai pembeli (mis. BCA, QRIS).
+  gatewayInvoiceId String?       @unique
+  gatewayUrl       String?
+  paymentChannel   String?
+  promoId          String?
   // Salinan alamat saat checkout agar riwayat tidak berubah bila alamat diedit.
-  shipName       String
-  shipPhone      String
-  shipStreet     String
-  shipCity       String
-  shipZip        String
-  expiresAt      DateTime
-  paidAt         DateTime?
-  shippedAt      DateTime?
-  receivedAt     DateTime?
-  cancelledAt    DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  shipName         String
+  shipPhone        String
+  shipStreet       String
+  shipVillage      String        @default("")
+  shipDistrict     String        @default("")
+  shipCity         String
+  shipProvince     String        @default("")
+  shipZip          String
+  expiresAt        DateTime
+  paidAt           DateTime?
+  shippedAt        DateTime?
+  receivedAt       DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   user   User         @relation(fields: [userId], references: [id])
   promo  Promo?       @relation(fields: [promoId], references: [id])

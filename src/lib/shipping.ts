@@ -1,16 +1,22 @@
-// Tarif tetap per kurir (asumsi MVP, sama dengan website lama). Ganti di sini bila tarif berubah.
-export const COURIERS = [
-  { id: "jne", name: "JNE Reguler", eta: "2–3 hari", cost: 10000 },
-  { id: "jnt", name: "J&T Express", eta: "2–3 hari", cost: 12000 },
-  { id: "sicepat", name: "SiCepat REG", eta: "1–2 hari", cost: 9000 },
-  { id: "pickup", name: "Ambil di tempat (COD kampus)", eta: "Janjian via chat", cost: 0 },
-] as const;
+// Tipe dan konstanta ongkir/pembayaran yang aman dipakai di server maupun klien.
+// Perhitungan tarifnya ada di shipping-calc.ts (murni) dan shipping-quote.ts (memanggil Biteship).
 
-export type CourierId = (typeof COURIERS)[number]["id"];
+export type ShippingOption = {
+  /** Kunci stabil, mis. "jne:reg". Dikirim dari form dan dicocokkan ulang di server. */
+  id: string;
+  name: string;
+  eta: string;
+  /** Ongkir yang ditagihkan ke pembeli (rupiah), sudah termasuk margin pengaman toko. */
+  cost: number;
+  /** true bila tarif berupa perkiraan (tanpa kunci Biteship). */
+  estimate?: boolean;
+};
 
-export const getCourier = (id: string) => COURIERS.find((c) => c.id === id);
+export const PICKUP_ID = "pickup";
+export const PICKUP_OPTION: ShippingOption = { id: PICKUP_ID, name: "Ambil di tempat (COD kampus)", eta: "Janjian via chat", cost: 0 };
 
 export const PAYMENT_METHODS = {
+  GATEWAY: { label: "Bayar online", note: "Virtual account bank, QRIS, dompet digital, atau kartu. Langsung terkonfirmasi otomatis." },
   BANK_TRANSFER: { label: "Transfer Bank", note: "Transfer ke rekening toko, lalu kirim bukti lewat WhatsApp" },
   EWALLET: { label: "Dompet Digital / QRIS", note: "Bayar ke nomor dompet digital toko, lalu kirim bukti lewat WhatsApp" },
 } as const;

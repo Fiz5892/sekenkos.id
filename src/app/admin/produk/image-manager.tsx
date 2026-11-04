@@ -119,8 +119,8 @@ export function ImageManager({ initial, max }: { initial: string[]; max: number 
       setAdded(next);
       syncInput(next);
     } finally {
+      // Jangan mengosongkan input di sini: isinya baru saja disinkronkan (syncInput) dan itulah yang dikirim ke server.
       setCompressing(false);
-      if (input.current) input.current.value = "";
     }
   }
 

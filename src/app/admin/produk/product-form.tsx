@@ -64,12 +64,16 @@ export function ProductForm({ product, categories, error, saved }: { product?: P
         </Label>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Label text="Harga (Rp)">
           <input name="price" type="number" min={100} step={100} defaultValue={product?.price} required className={input} />
         </Label>
         <Label text="Stok">
           <input name="stock" type="number" min={0} defaultValue={product?.stock ?? 1} required className={input} />
+        </Label>
+        <Label text="Berat (gram)">
+          <input name="weightGrams" type="number" min={10} max={50000} step={10} defaultValue={product?.weightGrams ?? 500} required className={input} />
+          <span className="text-xs font-normal text-muted">Untuk barang besar, isi yang lebih besar antara berat timbangan dan berat volume (P × L × T cm ÷ 6 = gram). Kurir menagih yang lebih besar.</span>
         </Label>
         <Label text="Status">
           <select name="status" defaultValue={product?.status ?? "ACTIVE"} className={input}>

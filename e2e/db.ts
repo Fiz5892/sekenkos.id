@@ -65,6 +65,12 @@ export const statusOf = (code: string) => withClient(async (c) => (await c.query
 export const promoUsed = (code: string) => withClient(async (c) => (await c.query('select "usedCount" from promos where code = $1', [code])).rows[0]?.usedCount as number | undefined);
 export const eventCount = (code: string, status: string) =>
   withClient(async (c) => Number((await c.query(`select count(*) n from order_events e join orders o on o.id = e."orderId" where o.code = $1 and e.status = $2`, [code, status])).rows[0].n));
+export const totalOf = (code: string) => withClient(async (c) => Number((await c.query("select total from orders where code = $1", [code])).rows[0]?.total));
+export const noteCount = (code: string, like: string) =>
+  withClient(async (c) => Number((await c.query(`select count(*) n from order_events e join orders o on o.id = e."orderId" where o.code = $1 and e.note like $2`, [code, like])).rows[0].n));
+/** Menjadikan pesanan yang sudah dibuat sebagai pesanan bayar online (seolah transaksi Midtrans sudah dibuat). */
+export const makeGatewayOrder = (code: string, invoiceId: string) =>
+  withClient((c) => c.query(`update orders set "paymentMethod" = 'GATEWAY', "gatewayInvoiceId" = $2, "gatewayUrl" = 'https://app.sandbox.midtrans.com/snap/v4/redirection/' || $2 where code = $1`, [code, invoiceId]));
 export const expireNow = (code: string) => withClient((c) => c.query(`update orders set "expiresAt" = now() - interval '1 hour' where code = $1`, [code]));
 
 /** Menghapus semua data uji dengan urutan yang menghormati relasi (pesanan dulu, baru akun dan produk). */

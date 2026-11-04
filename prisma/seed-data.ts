@@ -54,3 +54,20 @@ export const products: {
 ];
 
 export const promo = { code: "PRELOVED10", percent: 10, firstPurchaseOnly: true };
+
+/** Perkiraan berat barang (gram) untuk ongkir; admin bisa mengubahnya per produk. */
+export const WEIGHTS: Record<string, number> = {
+  "handmade-vase": 600,
+  "hand-soap": 300,
+  sunglasses: 150,
+  "kemeja-polo-hijau": 300,
+  "kipas-angin-meja": 1800,
+  "rak-sepatu-2-susun": 2500,
+  "cermin-dinding": 1500,
+  "keset-welcome": 600,
+  "ember-merah": 500,
+  "tempat-sampah-mini": 600,
+  gayung: 150,
+  "sapu-pengki": 400,
+  "botol-semprot": 250,
+};

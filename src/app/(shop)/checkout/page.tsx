@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { loadCart } from "@/lib/cart-server";
 import { db } from "@/lib/db";
+import { gatewayEnabled } from "@/lib/gateway";
+import { chainFor, listProvinces } from "@/lib/wilayah";
 import { requireUser } from "@/lib/session";
 import { CheckoutForm } from "./checkout-form";
 
@@ -30,14 +32,19 @@ async function Checkout() {
     recipient: address?.recipient ?? user.name,
     phone: address?.phone ?? "",
     street: address?.street ?? "",
-    city: address?.city ?? "",
     zip: address?.zip ?? "",
   };
+  // Alamat tersimpan yang sudah terstruktur mengisi ulang pilihan wilayah; alamat lama harus dipilih ulang.
+  const chain = address?.villageCode ? await chainFor(address.villageCode) : null;
+  const initialPlace = address && chain ? { villageCode: address.villageCode, zip: address.zip, ...chain } : null;
 
   return (
     <CheckoutForm
       subtotal={subtotal}
+      gateway={gatewayEnabled()}
       saved={saved}
+      provinces={listProvinces()}
+      initialPlace={initialPlace}
       items={items.filter((i) => i.qty > 0).map((i) => ({ id: i.product.id, name: i.product.name, qty: i.qty, price: i.product.price }))}
     />
   );

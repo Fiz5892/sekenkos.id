@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AccountTabs } from "@/components/account-tabs";
+import { AddressPicker } from "@/components/address-picker";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
+import { chainFor, listProvinces } from "@/lib/wilayah";
 import { saveProfile } from "./actions";
 
 export const metadata: Metadata = { title: "Akun Saya", robots: { index: false } };
@@ -27,6 +29,9 @@ async function Profil({ searchParams }: Pick<PageProps<"/akun">, "searchParams">
   if ((user as { role?: string }).role === "ADMIN") redirect("/admin");
   const params = await searchParams;
   const address = await db.address.findFirst({ where: { userId: user.id }, orderBy: { updatedAt: "desc" } });
+  // Alamat lama (sebelum alamat terstruktur) tidak punya kode desa: wilayahnya perlu dipilih ulang.
+  const chain = address?.villageCode ? await chainFor(address.villageCode) : null;
+  const initialPlace = address && chain ? { villageCode: address.villageCode, zip: address.zip, ...chain } : null;
 
   return (
     <form action={saveProfile} className="grid gap-4 rounded-card border border-line p-5">
@@ -37,7 +42,7 @@ async function Profil({ searchParams }: Pick<PageProps<"/akun">, "searchParams">
       )}
       {params.galat && (
         <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
-          {params.galat === "nama" ? "Nama minimal 2 karakter." : "Alamat belum lengkap atau tidak valid: periksa nomor HP dan kode pos (5 digit)."}
+          {params.galat === "nama" ? "Nama minimal 2 karakter." : "Alamat belum lengkap atau tidak valid: periksa nomor HP, pilihan wilayah sampai desa / kelurahan, dan kode pos (5 digit)."}
         </p>
       )}
       <label className="grid gap-1 text-sm">
@@ -61,20 +66,16 @@ async function Profil({ searchParams }: Pick<PageProps<"/akun">, "searchParams">
           <input name="phone" defaultValue={address?.phone} type="tel" className={input} />
         </label>
       </div>
+      {address && !initialPlace && (
+        <p className="rounded-lg bg-header px-3 py-2 text-sm">
+          Alamat tersimpan ({address.city}) dibuat sebelum alamat terstruktur. Pilih ulang wilayahnya agar ongkir lebih akurat.
+        </p>
+      )}
+      <AddressPicker provinces={listProvinces()} initial={initialPlace} required={false} />
       <label className="grid gap-1 text-sm">
-        <span className="font-bold">Alamat lengkap</span>
-        <textarea name="street" defaultValue={address?.street} rows={2} className={input} />
+        <span className="font-bold">Detail alamat</span>
+        <textarea name="street" defaultValue={address?.street} rows={2} placeholder="Nama jalan, nomor rumah, RT/RW, patokan" className={input} />
       </label>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="grid gap-1 text-sm">
-          <span className="font-bold">Kota / Kabupaten</span>
-          <input name="city" defaultValue={address?.city} className={input} />
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span className="font-bold">Kode pos</span>
-          <input name="zip" defaultValue={address?.zip} inputMode="numeric" maxLength={5} className={input} />
-        </label>
-      </div>
       <button className="w-fit rounded-full bg-foreground px-6 py-2.5 font-bold text-white hover:bg-black">Simpan</button>
     </form>
   );

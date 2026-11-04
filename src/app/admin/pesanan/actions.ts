@@ -26,6 +26,9 @@ export async function advance(formData: FormData) {
 
   let error: string | null = null;
   try {
+    // Pesanan bayar online hanya boleh lunas lewat webhook gateway, supaya status tak bisa ditandai tanpa uang masuk.
+    const meta = await db.order.findUnique({ where: { id: order.id }, select: { paymentMethod: true } });
+    if (to === "PAID" && meta?.paymentMethod === "GATEWAY") throw new OrderError("Pesanan bayar online lunas otomatis begitu pembayaran dikonfirmasi gateway.");
     const r = await advanceOrder(order.id, to, admin.id, { trackingNumber: text(formData.get("resi")) });
     const o = r.order;
     if (r.changed && o) {

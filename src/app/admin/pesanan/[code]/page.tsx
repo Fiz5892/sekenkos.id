@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AdminSkeleton } from "@/components/admin-skeleton";
 import { OrderTimeline, StatusBadge } from "@/components/order-timeline";
+import { formatAddress } from "@/lib/address";
 import { db } from "@/lib/db";
 import { formatDateTime, formatRupiah } from "@/lib/format";
 import { canCancel, nextStep } from "@/lib/order-status";
@@ -37,6 +38,8 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/admin/pesanan/[
   if (!order) notFound();
 
   const step = nextStep(order.status);
+  // Pesanan bayar online lunas otomatis lewat webhook; tombol manual disembunyikan agar tidak salah tandai.
+  const autoPay = order.paymentMethod === "GATEWAY" && order.status === "PENDING_PAYMENT";
   const input = "rounded-lg border border-line px-3 py-2 outline-none focus:border-brand";
 
   return (
@@ -80,7 +83,11 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/admin/pesanan/[
               <div className="flex justify-between"><dt>Ongkir ({order.courier})</dt><dd>{formatRupiah(order.shippingCost)}</dd></div>
               <div className="flex justify-between text-lg font-bold"><dt>Total</dt><dd>{formatRupiah(order.total)}</dd></div>
             </dl>
-            <p className="mt-3 text-sm text-muted">Pembayaran: {PAYMENT_METHODS[order.paymentMethod].label}. Batas bayar {formatDateTime(order.expiresAt)}.</p>
+            <p className="mt-3 text-sm text-muted">
+              Pembayaran: {PAYMENT_METHODS[order.paymentMethod].label}
+              {order.paymentChannel ? ` (${order.paymentChannel})` : ""}. Batas bayar {formatDateTime(order.expiresAt)}.
+              {order.paymentMethod === "GATEWAY" && order.gatewayInvoiceId && <> Transaksi Midtrans: {order.gatewayInvoiceId}.</>}
+            </p>
           </section>
 
           <section className="rounded-card border border-line p-5">
@@ -88,7 +95,10 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/admin/pesanan/[
             <p className="text-sm">
               {order.shipName} · {order.shipPhone}
               <br />
-              {order.shipStreet}, {order.shipCity} {order.shipZip}
+              {formatAddress({ street: order.shipStreet, village: order.shipVillage, district: order.shipDistrict, city: order.shipCity, province: order.shipProvince, zip: order.shipZip })}
+            </p>
+            <p className="mt-2 text-sm text-muted">
+              {order.courier} · berat paket {(order.totalWeight / 1000).toLocaleString("id-ID", { maximumFractionDigits: 2 })} kg · ongkir ditagih {formatRupiah(order.shippingCost)}
             </p>
             {order.trackingNumber && <p className="mt-2 text-sm">Resi: <b>{order.trackingNumber}</b></p>}
           </section>
@@ -109,7 +119,10 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/admin/pesanan/[
         <aside className="grid h-fit gap-6">
           <section className="rounded-card border border-line p-5">
             <h2 className="mb-3 text-xl font-bold">Tindakan</h2>
-            {step ? (
+            {autoPay && (
+              <p className="mb-3 rounded-lg bg-header px-3 py-2 text-sm">Menunggu pembayaran online. Status berubah otomatis begitu Midtrans mengonfirmasi pembayaran.</p>
+            )}
+            {step && !autoPay ? (
               <form action={advance} className="grid gap-3">
                 <input type="hidden" name="code" value={order.code} />
                 <input type="hidden" name="to" value={step.to} />
@@ -123,7 +136,7 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/admin/pesanan/[
                 <button className="rounded-full bg-foreground px-5 py-2.5 font-bold text-white hover:bg-black">{step.label}</button>
               </form>
             ) : (
-              <p className="text-sm text-muted">Tidak ada tindakan lanjutan.</p>
+              !autoPay && <p className="text-sm text-muted">Tidak ada tindakan lanjutan.</p>
             )}
 
             {canCancel(order.status) && (

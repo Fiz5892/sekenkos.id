@@ -3,7 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { OrderTimeline, StatusBadge } from "@/components/order-timeline";
+import { formatAddress } from "@/lib/address";
 import { db } from "@/lib/db";
 import { formatDateTime, formatRupiah } from "@/lib/format";
 import { paymentTarget } from "@/lib/payment";
@@ -18,14 +20,15 @@ export default function PesananPage(props: PageProps<"/pesanan/[code]">) {
   return (
     <div className="mx-auto w-[min(820px,100%-32px)] py-8">
       <Suspense fallback={<div className="h-96 animate-pulse rounded-card bg-header" aria-label="Memuat pesanan" />}>
-        <Detail params={props.params} />
+        <Detail params={props.params} searchParams={props.searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function Detail({ params }: Pick<PageProps<"/pesanan/[code]">, "params">) {
+async function Detail({ params, searchParams }: Pick<PageProps<"/pesanan/[code]">, "params" | "searchParams">) {
   const { code } = await params;
+  const justPaid = (await searchParams).bayar === "ok";
   const user = await requireUser(`/pesanan/${code}`);
   // Pembeli hanya bisa melihat pesanannya sendiri (F-15): kode milik orang lain tampil sebagai "tidak ditemukan".
   const order = await db.order.findFirst({
@@ -52,7 +55,30 @@ async function Detail({ params }: Pick<PageProps<"/pesanan/[code]">, "params">) 
         <StatusBadge status={order.status} />
       </div>
 
-      {order.status === "PENDING_PAYMENT" && (
+      {order.status === "PENDING_PAYMENT" && order.paymentMethod === "GATEWAY" && (
+        <section className="mb-6 rounded-card border-2 border-brand bg-header p-5" aria-labelledby="bayar">
+          <h2 id="bayar" className="text-xl font-bold">
+            {justPaid ? "Menunggu konfirmasi pembayaran" : "Selesaikan pembayaran"}
+          </h2>
+          <p className="mt-2">
+            Total yang harus dibayar: <b className="text-2xl">{formatRupiah(order.total)}</b>
+          </p>
+          {justPaid ? (
+            <p className="mt-2 text-sm">Terima kasih! Halaman ini diperbarui otomatis begitu pembayaranmu kami terima, biasanya dalam hitungan detik.</p>
+          ) : (
+            <p className="mt-2 text-sm">Pilih virtual account bank, QRIS, atau dompet digital di halaman pembayaran aman. Pesanan otomatis lunas setelah kamu membayar.</p>
+          )}
+          {order.gatewayUrl && (
+            <a href={order.gatewayUrl} className="mt-4 inline-flex rounded-full bg-foreground px-6 py-3 font-bold text-white hover:bg-black">
+              {justPaid ? "Buka halaman pembayaran lagi" : "Bayar sekarang"}
+            </a>
+          )}
+          <p className="mt-3 text-xs text-muted">Bayar sebelum {formatDateTime(order.expiresAt)}. Setelah itu pesanan dibatalkan otomatis dan stok dikembalikan.</p>
+          <AutoRefresh />
+        </section>
+      )}
+
+      {order.status === "PENDING_PAYMENT" && order.paymentMethod !== "GATEWAY" && (
         <section className="mb-6 rounded-card border-2 border-brand bg-header p-5" aria-labelledby="bayar">
           <h2 id="bayar" className="text-xl font-bold">
             Selesaikan pembayaran
@@ -112,8 +138,9 @@ async function Detail({ params }: Pick<PageProps<"/pesanan/[code]">, "params">) 
           <Line label={`Ongkir (${order.courier})`} value={order.shippingCost ? formatRupiah(order.shippingCost) : "Gratis"} />
           <Line label="Total" value={formatRupiah(order.total)} strong />
         </dl>
+        {order.paymentChannel && <p className="mt-3 text-sm text-muted">Dibayar lewat {order.paymentChannel}.</p>}
         <p className="mt-3 text-sm text-muted">
-          Dikirim ke {order.shipName} ({order.shipPhone}) — {order.shipStreet}, {order.shipCity} {order.shipZip}
+          Dikirim ke {order.shipName} ({order.shipPhone}) — {formatAddress({ street: order.shipStreet, village: order.shipVillage, district: order.shipDistrict, city: order.shipCity, province: order.shipProvince, zip: order.shipZip })}
         </p>
       </section>
 
