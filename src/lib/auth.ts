@@ -1,5 +1,6 @@
 import "server-only";
 import { betterAuth } from "better-auth";
+import { after } from "next/server";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/lib/db";
@@ -8,6 +9,9 @@ import { SITE } from "@/lib/site";
 
 // Batas percobaan per menit per IP. Bisa dinaikkan hanya untuk tes otomatis (lihat playwright.config.ts).
 const strictMax = Number(process.env.AUTH_RATE_LIMIT_MAX) || 5;
+
+// Jeda minimal antar email reset untuk akun yang sama.
+const RESET_COOLDOWN_SEC = 120;
 
 // Asal (origin) yang boleh memanggil API auth selain baseURL. Di Vercel, domain produksi dan URL deploy/preview
 // diisi otomatis oleh Vercel, jadi login tidak ditolak "Invalid origin" saat dibuka lewat domain tersebut.
@@ -29,12 +33,31 @@ export const auth = betterAuth({
     resetPasswordTokenExpiresIn: 60 * 60,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
-      // Tidak di-await agar waktu respons tidak membocorkan apakah email terdaftar.
-      void sendEmail({
-        to: user.email,
-        subject: "Reset password sekenkos.id",
-        text: `Halo ${user.name},\n\nKlik tautan berikut untuk membuat password baru (berlaku 1 jam):\n${url}\n\nJika kamu tidak meminta ini, abaikan email ini.`,
-      }).catch((e) => console.error("Gagal mengirim email reset password:", e));
+      // Batas per akun (bukan per IP): maksimal 1 email reset per RESET_COOLDOWN_SEC. Token yang baru dibuat
+      // sudah tercatat saat fungsi ini dipanggil, jadi lebih dari 1 token baru = permintaan beruntun, email dilewati.
+      // Respons ke pengguna tetap sama, jadi tidak membocorkan apakah email terdaftar.
+      const recent = await db.verification.count({
+        where: {
+          value: user.id,
+          identifier: { startsWith: "reset-password:" },
+          createdAt: { gt: new Date(Date.now() - RESET_COOLDOWN_SEC * 1000) },
+        },
+      });
+      if (recent > 1) return;
+
+      const send = () =>
+        sendEmail({
+          to: user.email,
+          subject: "Reset password sekenkos.id",
+          text: `Halo ${user.name},\n\nKlik tautan berikut untuk membuat password baru (berlaku 1 jam):\n${url}\n\nJika kamu tidak meminta ini, abaikan email ini.`,
+        }).catch((e) => console.error("Gagal mengirim email reset password:", e));
+      // after(): dijalankan setelah respons terkirim (waktu respons tidak membocorkan keberadaan akun) dan
+      // di serverless tetap diselesaikan platform. Di luar lingkup request, jatuh ke pengiriman biasa.
+      try {
+        after(send);
+      } catch {
+        void send();
+      }
     },
   },
   user: {

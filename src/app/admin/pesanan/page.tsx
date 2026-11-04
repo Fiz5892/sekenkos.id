@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/order-timeline";
 import type { OrderStatus } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { formatDateTime, formatRupiah } from "@/lib/format";
-import { STATUS_LABEL } from "@/lib/order-status";
+import { STATUS_LABEL, nextStep } from "@/lib/order-status";
 import { requireAdmin } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Pesanan" };
@@ -60,11 +60,12 @@ async function Daftar({ searchParams }: Pick<PageProps<"/admin/pesanan">, "searc
                 <th className="p-3">Total</th>
                 <th className="p-3">Dibuat</th>
                 <th className="p-3">Status</th>
+                <th className="p-3">Tindakan</th>
               </tr>
             </thead>
             <tbody>
               {orders.map((o) => (
-                <tr key={o.id} className="border-t border-line">
+                <tr key={o.id} className={`border-t border-line ${nextStep(o.status) ? "bg-brand/5" : ""}`}>
                   <td className="p-3">
                     <Link href={`/admin/pesanan/${o.code}`} className="font-bold text-brand hover:underline">
                       {o.code}
@@ -79,6 +80,9 @@ async function Daftar({ searchParams }: Pick<PageProps<"/admin/pesanan">, "searc
                   <td className="p-3">
                     <StatusBadge status={o.status} />
                   </td>
+                  <td className="p-3">
+                    <Aksi code={o.code} status={o.status} autoPay={o.paymentMethod === "GATEWAY" && o.status === "PENDING_PAYMENT"} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -86,5 +90,22 @@ async function Daftar({ searchParams }: Pick<PageProps<"/admin/pesanan">, "searc
         </div>
       )}
     </>
+  );
+}
+
+/** Tombol langkah berikutnya langsung di baris; pesanan yang sudah selesai atau batal hanya "Lihat". */
+function Aksi({ code, status, autoPay }: { code: string; status: OrderStatus; autoPay: boolean }) {
+  const step = nextStep(status);
+  const href = `/admin/pesanan/${code}`;
+  if (!step || autoPay)
+    return (
+      <Link href={href} className="text-sm text-muted hover:text-foreground hover:underline">
+        Lihat detail
+      </Link>
+    );
+  return (
+    <Link href={href} className="inline-block whitespace-nowrap rounded-full bg-brand px-4 py-1.5 text-sm font-bold text-white hover:bg-foreground">
+      {step.label} →
+    </Link>
   );
 }

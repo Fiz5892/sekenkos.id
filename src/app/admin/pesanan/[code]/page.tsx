@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AdminSkeleton } from "@/components/admin-skeleton";
 import { OrderTimeline, StatusBadge } from "@/components/order-timeline";
+import { TrackingCard } from "@/components/tracking-card";
+import { CARRIERS, detectCarrier } from "@/lib/couriers";
 import { formatAddress } from "@/lib/address";
 import { db } from "@/lib/db";
 import { formatDateTime, formatRupiah } from "@/lib/format";
@@ -63,6 +65,57 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/admin/pesanan/[
         </p>
       )}
 
+      <section className="mb-6 rounded-card border-2 border-brand bg-brand/5 p-5 shadow-sm" aria-labelledby="tindakan">
+        <h2 id="tindakan" className="text-xl font-bold">
+          {step && !autoPay ? `Langkah berikutnya: ${step.label}` : "Tindakan"}
+        </h2>
+        <p className="mb-4 text-sm text-muted">
+          {step && !autoPay
+            ? "Status berubah satu langkah demi satu. Pelanggan menerima email saat Dibayar dan Dikirim."
+            : "Tidak ada langkah yang perlu kamu lakukan sekarang."}
+        </p>
+        {autoPay && <p className="mb-3 rounded-lg bg-white px-3 py-2 text-sm">Menunggu pembayaran online. Status berubah otomatis begitu Midtrans mengonfirmasi pembayaran.</p>}
+        {step && !autoPay && (
+          <form action={advance} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="code" value={order.code} />
+            <input type="hidden" name="to" value={step.to} />
+            {step.to === "SHIPPED" && !detectCarrier(order.courier) && (
+              <label className="grid gap-1 text-sm">
+                <span className="font-bold">Kurir pengirim (wajib)</span>
+                <select name="carrier" required defaultValue="" className={`${input} bg-white`}>
+                  <option value="" disabled>
+                    Pilih kurir
+                  </option>
+                  {CARRIERS.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {step.to === "SHIPPED" && (
+              <label className="grid min-w-64 flex-1 gap-1 text-sm">
+                <span className="font-bold">Nomor resi ({order.courier}, wajib)</span>
+                <input name="resi" required maxLength={60} placeholder="mis. JP1234567890" className={`${input} bg-white`} />
+              </label>
+            )}
+            <button className="rounded-full bg-brand px-7 py-3 font-bold text-white shadow hover:bg-foreground">{step.label}</button>
+            {step.to === "PAID" && <p className="basis-full text-sm text-muted">Pastikan bukti transfer cocok dengan mutasi rekening sebelum menandai dibayar.</p>}
+          </form>
+        )}
+        {canCancel(order.status) && (
+          <form action={cancel} className="mt-4 flex flex-wrap items-end gap-3 border-t border-line pt-4">
+            <input type="hidden" name="code" value={order.code} />
+            <label className="grid min-w-64 flex-1 gap-1 text-sm">
+              <span className="font-bold">Batalkan pesanan</span>
+              <input name="alasan" placeholder="Alasan (opsional)" maxLength={200} className={`${input} bg-white`} />
+            </label>
+            <button className="rounded-full border border-danger bg-white px-5 py-2.5 font-bold text-danger hover:bg-danger/10">Batalkan &amp; kembalikan stok</button>
+          </form>
+        )}
+      </section>
+
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="grid gap-6">
           <section className="rounded-card border border-line p-5">
@@ -100,7 +153,11 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/admin/pesanan/[
             <p className="mt-2 text-sm text-muted">
               {order.courier} · berat paket {(order.totalWeight / 1000).toLocaleString("id-ID", { maximumFractionDigits: 2 })} kg · ongkir ditagih {formatRupiah(order.shippingCost)}
             </p>
-            {order.trackingNumber && <p className="mt-2 text-sm">Resi: <b>{order.trackingNumber}</b></p>}
+            {order.trackingNumber && (
+              <div className="mt-3">
+                <TrackingCard courier={order.courier} resi={order.trackingNumber} />
+              </div>
+            )}
           </section>
 
           <section className="rounded-card border border-line p-5">
@@ -117,39 +174,6 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/admin/pesanan/[
         </div>
 
         <aside className="grid h-fit gap-6">
-          <section className="rounded-card border border-line p-5">
-            <h2 className="mb-3 text-xl font-bold">Tindakan</h2>
-            {autoPay && (
-              <p className="mb-3 rounded-lg bg-header px-3 py-2 text-sm">Menunggu pembayaran online. Status berubah otomatis begitu Midtrans mengonfirmasi pembayaran.</p>
-            )}
-            {step && !autoPay ? (
-              <form action={advance} className="grid gap-3">
-                <input type="hidden" name="code" value={order.code} />
-                <input type="hidden" name="to" value={step.to} />
-                {step.to === "SHIPPED" && (
-                  <label className="grid gap-1 text-sm">
-                    <span className="font-bold">Nomor resi (wajib)</span>
-                    <input name="resi" required maxLength={60} className={input} />
-                  </label>
-                )}
-                {step.to === "PAID" && <p className="text-sm text-muted">Pastikan bukti transfer cocok dengan mutasi rekening sebelum menandai dibayar.</p>}
-                <button className="rounded-full bg-foreground px-5 py-2.5 font-bold text-white hover:bg-black">{step.label}</button>
-              </form>
-            ) : (
-              !autoPay && <p className="text-sm text-muted">Tidak ada tindakan lanjutan.</p>
-            )}
-
-            {canCancel(order.status) && (
-              <form action={cancel} className="mt-5 grid gap-2 border-t border-line pt-4">
-                <input type="hidden" name="code" value={order.code} />
-                <label className="grid gap-1 text-sm">
-                  <span className="font-bold">Batalkan pesanan</span>
-                  <input name="alasan" placeholder="Alasan (opsional)" maxLength={200} className={input} />
-                </label>
-                <button className="rounded-full border border-danger px-5 py-2 font-bold text-danger hover:bg-danger/10">Batalkan &amp; kembalikan stok</button>
-              </form>
-            )}
-          </section>
 
           <section className="rounded-card border border-line p-5">
             <h2 className="mb-3 text-xl font-bold">Lini masa</h2>

@@ -1,4 +1,5 @@
 import "server-only";
+import { detectCarrier } from "@/lib/couriers";
 import { sendEmail } from "@/lib/email";
 import { formatRupiah } from "@/lib/format";
 import { SITE } from "@/lib/site";
@@ -31,12 +32,15 @@ export const emailOrderCreated = (o: OrderMail, expiresAt: Date) =>
 export const emailOrderPaid = (o: OrderMail) =>
   safeSend(o.user.email, `Pembayaran pesanan ${o.code} diterima`, `Halo ${o.user.name},\n\nPembayaranmu sudah kami terima. Pesananmu segera dikemas.\nPantau status: ${link(o.code)}${sign}`);
 
-export const emailOrderShipped = (o: OrderMail) =>
-  safeSend(
+export const emailOrderShipped = (o: OrderMail) => {
+  const carrier = detectCarrier(o.courier);
+  const track = carrier && o.trackingNumber ? `\nLacak posisi paket di situs ${carrier.name}: ${carrier.trackUrl} (tempel nomor resi di atas).` : "";
+  return safeSend(
     o.user.email,
     `Pesanan ${o.code} dikirim`,
-    `Halo ${o.user.name},\n\nPesananmu dikirim lewat ${o.courier}${o.trackingNumber ? ` dengan nomor resi ${o.trackingNumber}` : ""}.\nPantau status: ${link(o.code)}${sign}`,
+    `Halo ${o.user.name},\n\nPesananmu dikirim lewat ${o.courier}${o.trackingNumber ? ` dengan nomor resi ${o.trackingNumber}` : ""}.${track}\nPantau status: ${link(o.code)}${sign}`,
   );
+};
 
 export const emailOrderCancelled = (o: OrderMail, reason: string) =>
   safeSend(o.user.email, `Pesanan ${o.code} dibatalkan`, `Halo ${o.user.name},\n\nPesanan ${o.code} dibatalkan (${reason}). Stok barang dikembalikan. Jika sudah membayar, hubungi kami lewat WhatsApp ${SITE.whatsapp}.${sign}`);

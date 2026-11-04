@@ -1,12 +1,13 @@
 // Data awal diambil dari katalog website statis lama (legacy/app.js).
+// Gambar kategori di sini sama dengan yang tampil di beranda; admin bisa menggantinya di /admin/kategori.
 
 export const categories = [
-  { slug: "pakaian", name: "Pakaian", icon: "/assets/shirt.png" },
-  { slug: "aksesori", name: "Aksesori", icon: "/assets/sunglasses.jpg" },
-  { slug: "dekorasi", name: "Dekorasi", icon: "/assets/mirror.png" },
-  { slug: "perabot", name: "Perabot", icon: "/assets/shoerack.png" },
-  { slug: "elektronik", name: "Elektronik", icon: "/assets/fan.png" },
-  { slug: "kebersihan", name: "Kebersihan", icon: "/assets/bucket.png" },
+  { slug: "pakaian", name: "Pakaian", icon: "/assets/hero/hoodie.webp" },
+  { slug: "aksesori", name: "Aksesori", icon: "/assets/hero/tote.webp" },
+  { slug: "dekorasi", name: "Dekorasi", icon: "/assets/hero/lamp.webp" },
+  { slug: "perabot", name: "Perabot", icon: "/assets/hero/chair.webp" },
+  { slug: "elektronik", name: "Elektronik", icon: "/assets/hero/ricecooker.webp" },
+  { slug: "kebersihan", name: "Kebersihan", icon: "/assets/kategori/kebersihan.webp" },
 ] as const;
 
 type Condition = "BARU" | "SEPERTI_BARU" | "BEKAS_BAIK";
@@ -29,7 +30,7 @@ export const products: {
     description: "Vas keramik buatan tangan dengan bentuk donat yang unik. Cocok sebagai pemanis meja belajar atau rak kamar kos. Material: Keramik. Warna: Putih." },
   { slug: "hand-soap", name: "Hand Soap", category: "kebersihan", price: 10000, condition: "BARU", size: "100 ml", stock: 3, popularity: 70, createdAt: "2024-10-18", image: "/assets/soap.jpg", isPhoto: true,
     description: "Sabun cuci tangan dalam botol pump elegan, sisa stok yang belum terpakai. Volume: 100 ml." },
-  { slug: "sunglasses", name: "Sunglasses", category: "aksesori", price: 45000, condition: "BEKAS_BAIK", size: "One size", stock: 1, popularity: 88, createdAt: "2024-10-22", image: "/assets/sunglasses.jpg", isPhoto: true,
+  { slug: "sunglasses", name: "Sunglasses", category: "aksesori", price: 45000, condition: "BEKAS_BAIK", size: "One size", stock: 1, popularity: 88, createdAt: "2024-10-22", image: "/assets/hero/tote.webp", isPhoto: true,
     description: "Kacamata hitam model bulat retro dengan side shield. Material: Stainless Steel. Warna: Hitam. Lensa bebas goresan." },
   { slug: "kemeja-polo-hijau", name: "Kemeja Polo Hijau", category: "pakaian", price: 35000, condition: "BEKAS_BAIK", size: "M", stock: 1, popularity: 64, createdAt: "2024-10-25", image: "/assets/produk/kemeja-polo-hijau.jpg", isPhoto: true,
     description: "Kemeja polo warna hijau mint dengan kerah krem. Bahan katun adem, dipakai beberapa kali saja." },

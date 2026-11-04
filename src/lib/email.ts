@@ -1,7 +1,21 @@
 import "server-only";
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
 
 type Email = { to: string; subject: string; text: string };
+
+// Satu transport dipakai bersama (pooling): koneksi SMTP dipakai ulang dan jumlahnya dibatasi,
+// jadi lonjakan permintaan antre di sini, tidak membuka ratusan koneksi sekaligus.
+let pooled: { key: string; transport: Transporter } | undefined;
+function getTransport(user: string, pass: string) {
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = Number(process.env.SMTP_PORT) || 465;
+  const key = `${host}:${port}:${user}:${pass}`;
+  if (pooled?.key !== key) {
+    const transport = nodemailer.createTransport({ host, port, secure: port === 465, pool: true, maxConnections: 3, maxMessages: 100, auth: { user, pass } });
+    pooled = { key, transport };
+  }
+  return pooled.transport;
+}
 
 /**
  * Mengirim email lewat SMTP (mis. Gmail + App Password) atau Resend (REST), sesuai env yang diisi:
@@ -15,13 +29,7 @@ export async function sendEmail({ to, subject, text }: Email) {
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
   if (smtpUser && smtpPass) {
-    const port = Number(process.env.SMTP_PORT) || 465;
-    const transport = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port,
-      secure: port === 465,
-      auth: { user: smtpUser, pass: smtpPass },
-    });
+    const transport = getTransport(smtpUser, smtpPass);
     await transport.sendMail({ from: process.env.EMAIL_FROM || `sekenkos.id <${smtpUser}>`, to, subject, text });
     return;
   }

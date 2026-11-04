@@ -22,7 +22,7 @@ describe("sendEmail", () => {
     vi.stubEnv("SMTP_PORT", "");
     vi.stubEnv("EMAIL_FROM", "");
     await sendEmail(mail);
-    expect(createTransport).toHaveBeenCalledWith({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user: "toko@gmail.com", pass: "abcd efgh ijkl mnop" } });
+    expect(createTransport).toHaveBeenCalledWith({ host: "smtp.gmail.com", port: 465, secure: true, pool: true, maxConnections: 3, maxMessages: 100, auth: { user: "toko@gmail.com", pass: "abcd efgh ijkl mnop" } });
     expect(sendMail).toHaveBeenCalledWith({ from: "sekenkos.id <toko@gmail.com>", ...mail });
   });
 

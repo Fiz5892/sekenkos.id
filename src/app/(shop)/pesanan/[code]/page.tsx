@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { OrderTimeline, StatusBadge } from "@/components/order-timeline";
+import { OrderProgress, TrackingCard } from "@/components/tracking-card";
 import { formatAddress } from "@/lib/address";
 import { db } from "@/lib/db";
 import { formatDateTime, formatRupiah } from "@/lib/format";
@@ -124,6 +125,10 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/pesanan/[code]"
 
       <section className="mb-6 rounded-card border border-line p-5">
         <h2 className="mb-4 text-xl font-bold">Status</h2>
+        <div className="mb-5 grid gap-4">
+          <OrderProgress status={order.status} />
+          <TrackingCard courier={order.courier} resi={order.trackingNumber} />
+        </div>
         <OrderTimeline events={order.events} status={order.status} resi={order.trackingNumber} courier={order.courier} />
         {order.status === "RECEIVED" && <p className="mt-4 text-sm">Terima kasih sudah berbelanja!</p>}
       </section>

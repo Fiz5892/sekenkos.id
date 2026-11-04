@@ -135,16 +135,6 @@ function GridSkeleton({ count, cols }: { count: number; cols: string }) {
   );
 }
 
-/** Gambar tanpa latar untuk tiap kategori; kategori baru tanpa gambar memakai ikon dari database. */
-const CATEGORY_ART: Record<string, string> = {
-  pakaian: "/assets/hero/hoodie.webp",
-  aksesori: "/assets/hero/tote.webp",
-  dekorasi: "/assets/hero/lamp.webp",
-  perabot: "/assets/hero/chair.webp",
-  elektronik: "/assets/hero/ricecooker.webp",
-  kebersihan: "/assets/kategori/kebersihan.webp",
-};
-
 async function Categories() {
   const categories = await db.category.findMany({ orderBy: { name: "asc" } });
   return (
@@ -161,7 +151,7 @@ async function Categories() {
             />
             <span className="absolute inset-x-[15%] bottom-[30%] top-[12%] transition-transform duration-500 group-hover:-translate-y-1.5 group-hover:scale-105">
               <Image
-                src={CATEGORY_ART[c.slug] ?? c.icon}
+                src={c.icon}
                 alt=""
                 fill
                 sizes="(min-width: 1024px) 160px, (min-width: 640px) 28vw, 40vw"

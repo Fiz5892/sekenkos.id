@@ -8,11 +8,11 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL, ssl: databaseSsl() }),
 });
 
-// Aman dijalankan berulang: memakai upsert berdasarkan slug/kode.
+// Aman dijalankan berulang: memakai upsert berdasarkan slug/kode. Kategori yang sudah ada tidak ditimpa (nama dan gambar bisa diubah admin).
 async function main() {
   const catIds = new Map<string, string>();
   for (const c of categories) {
-    const row = await prisma.category.upsert({ where: { slug: c.slug }, update: c, create: c });
+    const row = await prisma.category.upsert({ where: { slug: c.slug }, update: {}, create: c });
     catIds.set(c.slug, row.id);
   }
 

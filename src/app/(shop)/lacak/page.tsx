@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { OrderTimeline, StatusBadge } from "@/components/order-timeline";
+import { OrderProgress, TrackingCard } from "@/components/tracking-card";
 import { db } from "@/lib/db";
 import { normalizeOrderCode } from "@/lib/order-code";
 
@@ -51,6 +52,10 @@ async function Lacak({ searchParams }: Pick<PageProps<"/lacak">, "searchParams">
           <div className="mb-4 flex items-center justify-between">
             <b>{order.code}</b>
             <StatusBadge status={order.status} />
+          </div>
+          <div className="mb-5 grid gap-4">
+            <OrderProgress status={order.status} />
+            <TrackingCard courier={order.courier} resi={order.trackingNumber} />
           </div>
           <OrderTimeline events={order.events} status={order.status} resi={order.trackingNumber} courier={order.courier} />
         </section>

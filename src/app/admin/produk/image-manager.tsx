@@ -143,8 +143,8 @@ export function ImageManager({ initial, max }: { initial: string[]; max: number 
   const total = kept.length + added.length;
 
   return (
-    <fieldset className="grid gap-3">
-      <legend className="mb-2 text-sm font-bold">
+    <fieldset className="grid gap-2">
+      <legend className="mb-1 text-sm font-bold">
         Foto <span className="font-normal text-muted">({total}/{max})</span>
       </legend>
 
@@ -153,7 +153,7 @@ export function ImageManager({ initial, max }: { initial: string[]; max: number 
       ))}
 
       {total > 0 && (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <ul className="grid grid-cols-3 gap-2">
           {kept.map((src, i) => (
             <li key={src} className="relative aspect-square overflow-hidden rounded-lg border border-line bg-header">
               {/* eslint-disable-next-line @next/next/no-img-element -- pratinjau admin, tidak perlu optimasi */}
@@ -198,7 +198,7 @@ export function ImageManager({ initial, max }: { initial: string[]; max: number 
         </ul>
       )}
 
-      <div className={`rounded-lg border-2 border-dashed border-line bg-header/50 p-4 text-center ${total >= max ? "opacity-60" : ""}`}>
+      <div className={`rounded-lg border-2 border-dashed border-line bg-header/50 p-5 text-center ${total >= max ? "opacity-60" : ""}`}>
         <input
           ref={input}
           name="files"
@@ -217,7 +217,7 @@ export function ImageManager({ initial, max }: { initial: string[]; max: number 
           </p>
         )}
         <p className="mt-2 text-xs leading-relaxed text-muted">
-          JPG, PNG, atau WebP. Foto besar otomatis dikompresi menjadi WebP ringan (~100–300 KB) agar hemat penyimpanan dan cepat dimuat pembeli.
+          JPG, PNG, atau WebP. Otomatis dikompresi ke WebP ringan (~100–300 KB).
         </p>
       </div>
     </fieldset>
