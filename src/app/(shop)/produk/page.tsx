@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { after } from "next/server";
 import { Suspense } from "react";
+import { FilterDrawer } from "@/components/filter-drawer";
 import { ProductCard } from "@/components/product-card";
 import { CONDITION_PARAM, SORTS, buildWhere, parseCatalogQuery } from "@/lib/catalog";
 import { db } from "@/lib/db";
@@ -68,10 +69,7 @@ async function Catalog({ searchParams }: Pick<PageProps<"/produk">, "searchParam
 
   return (
     <div className="grid gap-8 lg:grid-cols-[240px_1fr] lg:items-start">
-      <aside
-        aria-label="Filter produk"
-        className="lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-6.5rem)] lg:overflow-y-auto lg:pr-3 custom-scrollbar"
-      >
+      <FilterDrawer activeCount={query.kondisi.length + query.ukuran.length + (query.min !== undefined ? 1 : 0) + (query.max !== undefined ? 1 : 0)}>
         <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Kategori</h2>
         <nav className="grid gap-0.5 text-sm">
           <Link href="/produk" className={`rounded-md px-3 py-1.5 hover:bg-header ${!query.kategori ? "bg-header font-bold" : ""}`}>
@@ -144,7 +142,7 @@ async function Catalog({ searchParams }: Pick<PageProps<"/produk">, "searchParam
             )}
           </div>
         </form>
-      </aside>
+      </FilterDrawer>
 
       <section>
         <h1 className="text-3xl font-bold">{title}</h1>
