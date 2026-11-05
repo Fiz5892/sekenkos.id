@@ -33,7 +33,7 @@ export function Field({ label, hint, id, type, ...props }: { label: string; hint
           <button
             type="button"
             onClick={() => setVisible((v) => !v)}
-            aria-label={visible ? "Sembunyikan password" : "Tampilkan password"}
+            aria-label={visible ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
             aria-pressed={visible}
             className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted hover:text-foreground"
           >

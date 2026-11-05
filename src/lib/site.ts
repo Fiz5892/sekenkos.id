@@ -5,7 +5,7 @@ export const SITE = {
   // Data kontak contoh dari website lama; ganti lewat .env / panel admin saat go-live.
   whatsapp: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "6281357022860",
   instagram: "@sekenkos.id",
-  email: "hello@sekenkos.id",
+  email: "sekenkosid@gmail.com",
   address: "Malang, Jawa Timur",
 } as const;
 
