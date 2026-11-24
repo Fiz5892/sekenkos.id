@@ -1,6 +1,7 @@
 import type { OrderStatus } from "@/generated/prisma/enums";
 import { detectCarrier } from "@/lib/couriers";
 import { FLOW, STATUS_LABEL } from "@/lib/order-status";
+import { isPickupCourier } from "@/lib/shipping";
 import { CopyButton } from "./copy-button";
 
 /** Garis kemajuan horizontal: Menunggu Pembayaran → Dibayar → Dikemas → Dikirim → Diterima. */
@@ -27,6 +28,21 @@ export function OrderProgress({ status }: { status: OrderStatus }) {
 /** Kurir + resi + tombol salin + tautan ke halaman lacak resmi kurir. Tampil setelah resi diisi. */
 export function TrackingCard({ courier, resi }: { courier: string; resi: string | null }) {
   if (!resi) return null;
+  const isPickup = isPickupCourier(courier);
+  if (isPickup) {
+    return (
+      <div className="grid gap-2 rounded-xl border border-brand/30 bg-brand/5 p-4">
+        <div>
+          <div className="text-xs text-muted">Metode Pengiriman</div>
+          <div className="font-bold text-base text-foreground">{courier}</div>
+        </div>
+        <p className="text-xs text-muted">
+          Pesanan siap diambil secara langsung (COD). Silakan hubungi kami via WhatsApp untuk janjian waktu dan tempat pertemuan.
+        </p>
+      </div>
+    );
+  }
+
   const carrier = detectCarrier(courier);
   return (
     <div className="grid gap-3 rounded-xl border border-brand/30 bg-brand/5 p-4">

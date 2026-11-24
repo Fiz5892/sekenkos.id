@@ -6,6 +6,7 @@ import { carrierByCode, detectCarrier } from "@/lib/couriers";
 import { db } from "@/lib/db";
 import { emailOrderCancelled, emailOrderPaid, emailOrderShipped } from "@/lib/order-emails";
 import { OrderError, advanceOrder, cancelOrder } from "@/lib/orders";
+import { isPickupCourier } from "@/lib/shipping";
 import { requireAdmin } from "@/lib/session";
 
 const text = (v: FormDataEntryValue | null) => (typeof v === "string" ? v : "");
@@ -31,12 +32,15 @@ export async function advance(formData: FormData) {
     const meta = await db.order.findUnique({ where: { id: order.id }, select: { paymentMethod: true, courier: true, status: true } });
     if (to === "PAID" && meta?.paymentMethod === "GATEWAY") throw new OrderError("Pesanan bayar online lunas otomatis begitu pembayaran dikonfirmasi gateway.");
     // Ongkir "estimasi" tidak menyebut kurir: admin memilihnya saat mengirim, agar pelanggan dapat tautan lacak yang tepat.
-    if (to === "SHIPPED" && meta && meta.status === "PACKED" && !detectCarrier(meta.courier)) {
+    const isPickup = isPickupCourier(meta?.courier);
+    if (to === "SHIPPED" && meta && meta.status === "PACKED" && !detectCarrier(meta.courier) && !isPickup) {
       const carrier = carrierByCode(text(formData.get("carrier")));
       if (!carrier) throw new OrderError("Pilih kurir pengirim.");
       await db.order.update({ where: { id: order.id }, data: { courier: `${carrier.name} (${meta.courier})`.slice(0, 60) } });
     }
-    const r = await advanceOrder(order.id, to, admin.id, { trackingNumber: text(formData.get("resi")) });
+    const resiInput = text(formData.get("resi")).trim();
+    const trackingNumber = isPickup ? (resiInput || "COD (Ambil di tempat)") : resiInput;
+    const r = await advanceOrder(order.id, to, admin.id, { trackingNumber });
     const o = r.order;
     if (r.changed && o) {
       if (to === "PAID") after(() => emailOrderPaid(o));

@@ -15,6 +15,13 @@ export type ShippingOption = {
 export const PICKUP_ID = "pickup";
 export const PICKUP_OPTION: ShippingOption = { id: PICKUP_ID, name: "Ambil di tempat (COD kampus)", eta: "Janjian via chat", cost: 0 };
 
+/** Mengecek apakah kurir merupakan metode Ambil di tempat / COD. */
+export function isPickupCourier(courier: string | null | undefined): boolean {
+  if (!courier) return false;
+  const lower = courier.toLowerCase();
+  return lower.includes("ambil di tempat") || lower.includes("cod") || lower.includes("pickup");
+}
+
 export const PAYMENT_METHODS = {
   BANK_TRANSFER: { label: "Transfer Bank", note: "Transfer ke rekening toko, lalu kirim bukti lewat WhatsApp" },
   EWALLET: { label: "E-Wallet", note: "Bayar ke nomor dompet digital toko, lalu kirim bukti lewat WhatsApp" },

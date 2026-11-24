@@ -11,7 +11,7 @@ import { db } from "@/lib/db";
 import { formatDateTime, formatRupiah } from "@/lib/format";
 import { canCancel, nextStep } from "@/lib/order-status";
 import { requireAdmin } from "@/lib/session";
-import { PAYMENT_METHODS } from "@/lib/shipping";
+import { PAYMENT_METHODS, isPickupCourier } from "@/lib/shipping";
 import { advance, cancel } from "../actions";
 
 export const metadata: Metadata = { title: "Detail pesanan" };
@@ -40,6 +40,7 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/admin/pesanan/[
   if (!order) notFound();
 
   const step = nextStep(order.status);
+  const isPickup = isPickupCourier(order.courier);
   // Pesanan bayar online lunas otomatis lewat webhook; tombol manual disembunyikan agar tidak salah tandai.
   const autoPay = order.paymentMethod === "GATEWAY" && order.status === "PENDING_PAYMENT";
   const input = "rounded-lg border border-line px-3 py-2 outline-none focus:border-brand";
@@ -67,11 +68,17 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/admin/pesanan/[
 
       <section className="mb-6 rounded-card border-2 border-brand bg-brand/5 p-5 shadow-sm" aria-labelledby="tindakan">
         <h2 id="tindakan" className="text-xl font-bold">
-          {step && !autoPay ? `Langkah berikutnya: ${step.label}` : "Tindakan"}
+          {step && !autoPay
+            ? isPickup && step.to === "SHIPPED"
+              ? "Langkah berikutnya: Siap Diambil / Janjian (COD)"
+              : `Langkah berikutnya: ${step.label}`
+            : "Tindakan"}
         </h2>
         <p className="mb-4 text-sm text-muted">
           {step && !autoPay
-            ? "Status berubah satu langkah demi satu. Pelanggan menerima email saat Dibayar dan Dikirim."
+            ? isPickup && step.to === "SHIPPED"
+              ? "Tandai pesanan siap diambil (COD kampus). Pelanggan akan menerima email bahwa pesanan siap diambil."
+              : "Status berubah satu langkah demi satu. Pelanggan menerima email saat Dibayar dan Dikirim."
             : "Tidak ada langkah yang perlu kamu lakukan sekarang."}
         </p>
         {autoPay && <p className="mb-3 rounded-lg bg-white px-3 py-2 text-sm">Menunggu pembayaran online. Status berubah otomatis begitu Midtrans mengonfirmasi pembayaran.</p>}
@@ -79,7 +86,7 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/admin/pesanan/[
           <form action={advance} className="flex flex-wrap items-end gap-3">
             <input type="hidden" name="code" value={order.code} />
             <input type="hidden" name="to" value={step.to} />
-            {step.to === "SHIPPED" && !detectCarrier(order.courier) && (
+            {step.to === "SHIPPED" && !detectCarrier(order.courier) && !isPickup && (
               <label className="grid gap-1 text-sm">
                 <span className="font-bold">Kurir pengirim (wajib)</span>
                 <select name="carrier" required defaultValue="" className={`${input} bg-white`}>
@@ -95,12 +102,27 @@ async function Detail({ params, searchParams }: Pick<PageProps<"/admin/pesanan/[
               </label>
             )}
             {step.to === "SHIPPED" && (
-              <label className="grid min-w-64 flex-1 gap-1 text-sm">
-                <span className="font-bold">Nomor resi ({order.courier}, wajib)</span>
-                <input name="resi" required maxLength={60} placeholder="mis. JP1234567890" className={`${input} bg-white`} />
-              </label>
+              isPickup ? (
+                <label className="grid min-w-64 flex-1 gap-1 text-sm">
+                  <span className="font-bold">Catatan / Lokasi COD (opsional)</span>
+                  <input
+                    name="resi"
+                    maxLength={60}
+                    defaultValue="COD Kampus"
+                    placeholder="mis. Depan Graha Cakrawala / Janjian via WA"
+                    className={`${input} bg-white`}
+                  />
+                </label>
+              ) : (
+                <label className="grid min-w-64 flex-1 gap-1 text-sm">
+                  <span className="font-bold">Nomor resi ({order.courier}, wajib)</span>
+                  <input name="resi" required maxLength={60} placeholder="mis. JP1234567890" className={`${input} bg-white`} />
+                </label>
+              )
             )}
-            <button className="rounded-full bg-brand px-7 py-3 font-bold text-white shadow hover:bg-foreground">{step.label}</button>
+            <button className="rounded-full bg-brand px-7 py-3 font-bold text-white shadow hover:bg-foreground">
+              {isPickup && step.to === "SHIPPED" ? "Tandai Siap Diambil (COD)" : step.label}
+            </button>
             {step.to === "PAID" && <p className="basis-full text-sm text-muted">Pastikan bukti transfer cocok dengan mutasi rekening sebelum menandai dibayar.</p>}
           </form>
         )}

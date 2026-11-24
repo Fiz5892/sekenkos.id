@@ -1,6 +1,7 @@
 import type { OrderStatus } from "@/generated/prisma/enums";
 import { formatDateTime } from "@/lib/format";
 import { FLOW, STATUS_LABEL } from "@/lib/order-status";
+import { isPickupCourier } from "@/lib/shipping";
 
 type Event = { status: OrderStatus; createdAt: Date; note?: string | null };
 
@@ -38,7 +39,11 @@ export function OrderTimeline({ events, status, resi, courier }: { events: Event
             <b className={done ? "" : "text-muted"}>{STATUS_LABEL[s]}</b>
             <div className={`text-sm ${done ? "" : "text-muted"}`}>
               {DESC[s]}
-              {s === "SHIPPED" && done && (courier || resi) ? ` — ${courier ?? ""}${resi ? ` · Resi ${resi}` : ""}` : ""}
+              {s === "SHIPPED" && done && (courier || resi)
+                ? isPickupCourier(courier)
+                  ? ` — ${courier ?? "COD"}`
+                  : ` — ${courier ?? ""}${resi ? ` · Resi ${resi}` : ""}`
+                : ""}
               {ev && <span className="text-muted"> · {formatDateTime(ev.createdAt)}</span>}
             </div>
             {ev?.note && s === "CANCELLED" && <div className="text-sm text-muted">{ev.note}</div>}
